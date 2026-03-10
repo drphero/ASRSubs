@@ -25,12 +25,12 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 10, G: 14, B: 20, A: 1},
 		DragAndDrop: &options.DragAndDrop{
-			EnableFileDrop:    true,
+			EnableFileDrop:     true,
 			DisableWebViewDrop: true,
-			CSSDropProperty:   "--wails-drop-target",
-			CSSDropValue:      "drop",
+			CSSDropProperty:    "--wails-drop-target",
+			CSSDropValue:       "drop",
 		},
-		OnStartup:        app.startup,
+		OnStartup: app.startup,
 		Bind: []interface{}{
 			app,
 		},

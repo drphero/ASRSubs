@@ -1,9 +1,45 @@
+import type { DiagnosticsSnapshot, MediaMetadata, Preferences } from "../../lib/backend";
+import { DetailsPanel } from "../diagnostics/DetailsPanel";
+import { MediaDropzone } from "../intake/MediaDropzone";
+import { SettingsDrawer } from "../preferences/SettingsDrawer";
+import { SelectedFileSummary } from "../workspace/SelectedFileSummary";
+import { WorkspaceHeader } from "../workspace/WorkspaceHeader";
+
 type AppShellProps = {
-  selectedModel: string;
+  diagnostics: DiagnosticsSnapshot;
   hasSelection: boolean;
+  intakeError: string | null;
+  onBrowse: () => void;
+  onClearIntakeError: () => void;
+  onCloseDetails: () => void;
+  onCloseSettings: () => void;
+  onOpenDetails: () => void;
+  onOpenSettings: () => void;
+  onPreferencesChange: (preferences: Preferences) => void | Promise<unknown>;
+  preferences: Preferences;
+  preferencesError: string | null;
+  selectedFile: MediaMetadata | null;
+  showDetails: boolean;
+  showSettings: boolean;
 };
 
-export function AppShell({ selectedModel, hasSelection }: AppShellProps) {
+export function AppShell({
+  diagnostics,
+  hasSelection,
+  intakeError,
+  onBrowse,
+  onClearIntakeError,
+  onCloseDetails,
+  onCloseSettings,
+  onOpenDetails,
+  onOpenSettings,
+  onPreferencesChange,
+  preferences,
+  preferencesError,
+  selectedFile,
+  showDetails,
+  showSettings,
+}: AppShellProps) {
   return (
     <div className="app-shell">
       <div className="ambient ambient-left" aria-hidden="true" />
@@ -14,42 +50,50 @@ export function AppShell({ selectedModel, hasSelection }: AppShellProps) {
           <p className="eyebrow">ASRSubs</p>
           <h1>Local subtitles with zero ceremony.</h1>
         </div>
-        <span className="model-chip" aria-label="selected model">
-          {selectedModel}
-        </span>
+        <div className="topbar-actions">
+          <button className="ghost-action" onClick={onOpenDetails} type="button">
+            Details
+          </button>
+          <button className="ghost-action" onClick={onOpenSettings} type="button">
+            Settings
+          </button>
+        </div>
       </header>
 
       <main className="shell-main">
         {hasSelection ? (
-          <section className="workspace-placeholder" aria-label="workspace view">
-            <div className="workspace-card">
-              <p className="section-label">Workspace</p>
-              <h2>Selected media appears here.</h2>
-              <p>
-                Phase 1 establishes the shell. File metadata, settings, and diagnostics
-                will plug into this view in later plans.
-              </p>
-            </div>
+          <section className="workspace-view" aria-label="workspace view">
+            {selectedFile ? (
+              <>
+                <WorkspaceHeader
+                  file={selectedFile}
+                  onBrowse={onBrowse}
+                  onOpenDetails={onOpenDetails}
+                  onOpenSettings={onOpenSettings}
+                  selectedModel={preferences.model}
+                />
+                <SelectedFileSummary error={intakeError} file={selectedFile} />
+              </>
+            ) : null}
           </section>
         ) : (
-          <section className="landing-panel" aria-label="landing view">
-            <div className="dropzone" role="button" tabIndex={0}>
-              <span className="dropzone-orbit" aria-hidden="true" />
-              <div className="dropzone-body">
-                <p className="section-label">Drop media</p>
-                <h2>Drag a file straight into the center.</h2>
-                <p className="dropzone-meta">Browse stays secondary. The canvas stays clean.</p>
-                <div className="dropzone-actions">
-                  <button className="primary-action" type="button">
-                    Browse Media
-                  </button>
-                  <span className="secondary-note">Selected model: {selectedModel}</span>
-                </div>
-              </div>
-            </div>
-          </section>
+          <MediaDropzone
+            error={intakeError}
+            onBrowse={onBrowse}
+            onClearError={onClearIntakeError}
+            selectedModel={preferences.model}
+          />
         )}
       </main>
+
+      <SettingsDrawer
+        error={preferencesError}
+        onClose={onCloseSettings}
+        onPreferencesChange={onPreferencesChange}
+        open={showSettings}
+        preferences={preferences}
+      />
+      <DetailsPanel onClose={onCloseDetails} open={showDetails} snapshot={diagnostics} />
     </div>
   );
 }

@@ -2,20 +2,35 @@ package main
 
 import (
 	"context"
+
+	"ASRSubs/internal/intake"
+	"ASRSubs/internal/settings"
 )
 
-// App struct
 type App struct {
-	ctx context.Context
+	ctx      context.Context
+	intake   *intake.Service
+	settings *settings.Store
+
+	diagnostics diagnosticsState
 }
 
-// NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{
+		intake: intake.NewService(),
+	}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.initDiagnostics()
+
+	store, err := settings.NewStore("ASRSubs")
+	if err != nil {
+		a.recordDiagnostic("error", "settings", "Settings storage could not be prepared.")
+		return
+	}
+
+	a.settings = store
+	a.recordDiagnostic("info", "app", "The shell is ready for a media file.")
 }
