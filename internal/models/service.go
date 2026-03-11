@@ -207,6 +207,48 @@ func (s *Service) Delete(id string) (ModelStatus, error) {
 	return status, nil
 }
 
+func (s *Service) EnsureReady(ctx context.Context, id string) (ModelStatus, error) {
+	status, err := s.GetModelState(id)
+	if err != nil {
+		return ModelStatus{}, err
+	}
+
+	if status.State == StateReady {
+		return status, nil
+	}
+
+	if status.State != StateDownloading {
+		if _, err := s.StartDownload(id); err != nil {
+			return ModelStatus{}, err
+		}
+	}
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ModelStatus{}, ctx.Err()
+		case <-ticker.C:
+			next, err := s.GetModelState(id)
+			if err != nil {
+				return ModelStatus{}, err
+			}
+			if next.State == StateReady {
+				return next, nil
+			}
+			if next.State == StateFailed {
+				message := next.Error
+				if message == "" {
+					message = "model download failed"
+				}
+				return ModelStatus{}, fmt.Errorf(message)
+			}
+		}
+	}
+}
+
 func (s *Service) runDownload(ctx context.Context, model ModelDescriptor) {
 	destination := s.modelDir(model.ID)
 	_ = os.RemoveAll(destination)

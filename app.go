@@ -7,16 +7,19 @@ import (
 	"ASRSubs/internal/models"
 	asrruntime "ASRSubs/internal/runtime"
 	"ASRSubs/internal/settings"
+	"ASRSubs/internal/transcription"
 )
 
 type App struct {
-	ctx      context.Context
-	intake   *intake.Service
-	models   *models.Service
-	runtime  *asrruntime.Service
-	settings *settings.Store
+	ctx           context.Context
+	intake        *intake.Service
+	models        *models.Service
+	runtime       *asrruntime.Service
+	settings      *settings.Store
+	transcription *transcription.Service
 
-	diagnostics diagnosticsState
+	diagnostics        diagnosticsState
+	transcriptionState transcriptionState
 }
 
 func NewApp() *App {
@@ -51,5 +54,6 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.models = modelService
+	a.transcription = transcription.NewService(runtimeService, modelService)
 	a.recordDiagnostic("info", "app", "The shell is ready for a media file.")
 }
