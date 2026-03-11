@@ -1,8 +1,11 @@
-import type { Preferences } from "../../lib/backend";
+import type { ModelStatus, Preferences } from "../../lib/backend";
 
 type SettingsDrawerProps = {
   error: string | null;
+  modelStatuses: ModelStatus[];
   onClose: () => void;
+  onDeleteModel: (modelID: ModelStatus["id"]) => void | Promise<unknown>;
+  onDownloadModel: (modelID: ModelStatus["id"]) => void | Promise<unknown>;
   onPreferencesChange: (preferences: Preferences) => void | Promise<unknown>;
   open: boolean;
   preferences: Preferences;
@@ -10,7 +13,10 @@ type SettingsDrawerProps = {
 
 export function SettingsDrawer({
   error,
+  modelStatuses,
   onClose,
+  onDeleteModel,
+  onDownloadModel,
   onPreferencesChange,
   open,
   preferences,
@@ -34,22 +40,77 @@ export function SettingsDrawer({
         </div>
 
         <div className="drawer-group">
-          <label className="field">
-            <span>Transcription model</span>
-            <select
-              aria-label="Transcription model"
-              onChange={(event) =>
-                onPreferencesChange({
-                  ...preferences,
-                  model: event.target.value as Preferences["model"],
-                })
-              }
-              value={preferences.model}
-            >
-              <option value="Qwen3-ASR-0.6B">Qwen3-ASR-0.6B</option>
-              <option value="Qwen3-ASR-1.7B">Qwen3-ASR-1.7B</option>
-            </select>
-          </label>
+          <div>
+            <p className="section-label">Transcription models</p>
+            <h3>Choose the local model that fits this machine.</h3>
+          </div>
+          <div className="model-library">
+            {modelStatuses.map((model) => {
+              const isSelected = preferences.model === model.id;
+              const canDelete = model.state === "ready";
+              const canDownload = model.state === "not_downloaded" || model.state === "failed";
+
+              return (
+                <article
+                  aria-label={`${model.name} card`}
+                  className={`model-card${isSelected ? " model-card-selected" : ""}`}
+                  key={model.id}
+                >
+                  <div className="model-card-header">
+                    <div>
+                      <p className="section-label">{isSelected ? "Selected model" : "Available model"}</p>
+                      <h3>{model.name}</h3>
+                    </div>
+                    <span
+                      aria-label={`${model.name} status`}
+                      className={`status-pill status-pill-${model.state}`}
+                    >
+                      {model.stateLabel}
+                    </span>
+                  </div>
+                  <p className="workspace-copy">{model.description}</p>
+                  <div className="model-facts">
+                    <span>{model.speedDescription}</span>
+                    <span>{model.qualityDescription}</span>
+                    <span>{model.systemRequirement}</span>
+                  </div>
+                  <div className="model-card-actions">
+                    <button
+                      className={isSelected ? "primary-action" : "ghost-action"}
+                      onClick={() =>
+                        onPreferencesChange({
+                          ...preferences,
+                          model: model.id,
+                        })
+                      }
+                      type="button"
+                    >
+                      {isSelected ? "Selected" : "Use this model"}
+                    </button>
+                    {canDelete ? (
+                      <button className="ghost-action" onClick={() => onDeleteModel(model.id)} type="button">
+                        Delete local files
+                      </button>
+                    ) : (
+                      <button
+                        className="ghost-action"
+                        disabled={!canDownload}
+                        onClick={() => onDownloadModel(model.id)}
+                        type="button"
+                      >
+                        {model.state === "downloading" ? "Downloading" : "Download model"}
+                      </button>
+                    )}
+                  </div>
+                  {model.error ? (
+                    <p className="inline-feedback inline-feedback-error" role="alert">
+                      {model.error}
+                    </p>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
 
           <label className="field">
             <span>Theme</span>

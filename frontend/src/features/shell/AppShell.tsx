@@ -1,4 +1,4 @@
-import type { DiagnosticsSnapshot, MediaMetadata, Preferences } from "../../lib/backend";
+import type { DiagnosticsSnapshot, MediaMetadata, ModelStatus, Preferences } from "../../lib/backend";
 import { DetailsPanel } from "../diagnostics/DetailsPanel";
 import { MediaDropzone } from "../intake/MediaDropzone";
 import { SettingsDrawer } from "../preferences/SettingsDrawer";
@@ -9,16 +9,20 @@ type AppShellProps = {
   diagnostics: DiagnosticsSnapshot;
   hasSelection: boolean;
   intakeError: string | null;
+  modelStatuses: ModelStatus[];
   onBrowse: () => void;
   onClearIntakeError: () => void;
   onCloseDetails: () => void;
   onCloseSettings: () => void;
+  onDeleteModel: (modelID: ModelStatus["id"]) => void | Promise<unknown>;
+  onDownloadModel: (modelID: ModelStatus["id"]) => void | Promise<unknown>;
   onOpenDetails: () => void;
   onOpenSettings: () => void;
   onPreferencesChange: (preferences: Preferences) => void | Promise<unknown>;
   preferences: Preferences;
   preferencesError: string | null;
   selectedFile: MediaMetadata | null;
+  selectedModelStatus: ModelStatus | null;
   showDetails: boolean;
   showSettings: boolean;
 };
@@ -27,16 +31,20 @@ export function AppShell({
   diagnostics,
   hasSelection,
   intakeError,
+  modelStatuses,
   onBrowse,
   onClearIntakeError,
   onCloseDetails,
   onCloseSettings,
+  onDeleteModel,
+  onDownloadModel,
   onOpenDetails,
   onOpenSettings,
   onPreferencesChange,
   preferences,
   preferencesError,
   selectedFile,
+  selectedModelStatus,
   showDetails,
   showSettings,
 }: AppShellProps) {
@@ -70,7 +78,7 @@ export function AppShell({
                   onBrowse={onBrowse}
                   onOpenDetails={onOpenDetails}
                   onOpenSettings={onOpenSettings}
-                  selectedModel={preferences.model}
+                  selectedModelStatus={selectedModelStatus}
                 />
                 <SelectedFileSummary error={intakeError} file={selectedFile} />
               </>
@@ -88,7 +96,10 @@ export function AppShell({
 
       <SettingsDrawer
         error={preferencesError}
+        modelStatuses={modelStatuses}
         onClose={onCloseSettings}
+        onDeleteModel={onDeleteModel}
+        onDownloadModel={onDownloadModel}
         onPreferencesChange={onPreferencesChange}
         open={showSettings}
         preferences={preferences}

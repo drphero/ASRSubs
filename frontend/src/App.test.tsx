@@ -11,9 +11,12 @@ vi.mock("./lib/backend", async () => {
   const actual = await vi.importActual<typeof import("./lib/backend")>("./lib/backend");
   return {
     ...actual,
+    deleteModel: vi.fn(),
     getDiagnosticsSnapshot: vi.fn().mockResolvedValue(actual.defaultDiagnostics),
+    loadModelSnapshot: vi.fn().mockResolvedValue(actual.defaultModelSnapshot),
     loadPreferences: vi.fn().mockResolvedValue(actual.defaultPreferences),
     selectMediaFile: vi.fn(),
+    startModelDownload: vi.fn(),
     updatePreferences: vi.fn().mockResolvedValue(actual.defaultPreferences),
     validateMediaPath: vi.fn(),
   };
@@ -25,7 +28,7 @@ describe("App shell", () => {
 
     expect(screen.getByLabelText("landing view")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Browse Media" })).toBeInTheDocument();
-    expect(await screen.findByText(/Selected model: Qwen3-ASR-0.6B/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Selected model: Qwen3-ASR-1.7B/i)).toBeInTheDocument();
   });
 
   it("opens the settings drawer", async () => {

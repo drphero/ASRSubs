@@ -1,11 +1,11 @@
-import type { MediaMetadata } from "../../lib/backend";
+import type { MediaMetadata, ModelStatus } from "../../lib/backend";
 
 type WorkspaceHeaderProps = {
   file: MediaMetadata;
   onBrowse: () => void;
   onOpenDetails: () => void;
   onOpenSettings: () => void;
-  selectedModel: string;
+  selectedModelStatus: ModelStatus | null;
 };
 
 export function WorkspaceHeader({
@@ -13,7 +13,7 @@ export function WorkspaceHeader({
   onBrowse,
   onOpenDetails,
   onOpenSettings,
-  selectedModel,
+  selectedModelStatus,
 }: WorkspaceHeaderProps) {
   return (
     <div className="workspace-header">
@@ -23,9 +23,20 @@ export function WorkspaceHeader({
         <p className="workspace-meta">{file.durationLabel}</p>
       </div>
       <div className="workspace-header-actions">
-        <span className="model-chip" aria-label="selected model">
-          {selectedModel}
-        </span>
+        <div className="workspace-model">
+          <span className="model-chip" aria-label="selected model">
+            {selectedModelStatus?.name ?? "Model unavailable"}
+          </span>
+          <span
+            aria-label="selected model state"
+            className={`status-pill status-pill-${selectedModelStatus?.state ?? "not_downloaded"}`}
+          >
+            {selectedModelStatus?.stateLabel ?? "Not downloaded"}
+          </span>
+          <p className="workspace-model-copy">
+            {selectedModelStatus?.speedDescription ?? "Model state unavailable"}
+          </p>
+        </div>
         <button className="ghost-action" onClick={onOpenDetails} type="button">
           Details
         </button>
