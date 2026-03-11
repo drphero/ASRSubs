@@ -137,7 +137,7 @@ func (s *Service) RunWorker(ctx context.Context, request WorkerRequest) (WorkerR
 	stdinErr := <-writeErr
 
 	for _, pipeErr := range []error{stdoutErr, stderrErr, stdinErr} {
-		if ctx.Err() != nil && isIgnorablePipeError(pipeErr) {
+		if waitErr != nil && isIgnorablePipeError(pipeErr) {
 			continue
 		}
 		if pipeErr != nil {
