@@ -17,13 +17,18 @@ type transcriptionState struct {
 	snapshot    transcription.Snapshot
 }
 
+type transcriptionRequest struct {
+	MediaPath string `json:"mediaPath"`
+	ModelID   string `json:"modelID"`
+}
+
 func (a *App) GetTranscriptionSnapshot() transcription.Snapshot {
 	a.transcriptionState.mu.RLock()
 	defer a.transcriptionState.mu.RUnlock()
 	return a.transcriptionState.snapshot
 }
 
-func (a *App) StartTranscription(request transcription.StartRequest) (transcription.Snapshot, error) {
+func (a *App) StartTranscription(request transcriptionRequest) (transcription.Snapshot, error) {
 	return a.beginTranscription(request)
 }
 
@@ -36,16 +41,36 @@ func (a *App) RetryTranscription() (transcription.Snapshot, error) {
 		return transcription.Snapshot{}, fmt.Errorf("no transcription is available to retry")
 	}
 
-	return a.beginTranscription(request)
+	return a.beginTranscriptionWithRequest(request)
 }
 
-func (a *App) beginTranscription(request transcription.StartRequest) (transcription.Snapshot, error) {
+func (a *App) beginTranscription(request transcriptionRequest) (transcription.Snapshot, error) {
+	serviceRequest := transcription.StartRequest{
+		MediaPath: request.MediaPath,
+		ModelID:   request.ModelID,
+	}
+	if a.settings != nil {
+		preferences, prefErr := a.settings.Load()
+		if prefErr == nil {
+			serviceRequest.Preferences = transcription.RunPreferences{
+				MaxLineLength:         preferences.Output.MaxLineLength,
+				LinesPerSubtitle:      preferences.Output.LinesPerSubtitle,
+				AlignmentChunkMinutes: preferences.Processing.AlignmentChunkMinutes,
+				OneWordPerSubtitle:    preferences.Processing.OneWordPerSubtitle,
+			}
+		}
+	}
+
+	return a.beginTranscriptionWithRequest(serviceRequest)
+}
+
+func (a *App) beginTranscriptionWithRequest(serviceRequest transcription.StartRequest) (transcription.Snapshot, error) {
 	service, err := a.requireTranscriptionService()
 	if err != nil {
 		return transcription.Snapshot{}, err
 	}
 
-	if request.MediaPath == "" || request.ModelID == "" {
+	if serviceRequest.MediaPath == "" || serviceRequest.ModelID == "" {
 		return transcription.Snapshot{}, fmt.Errorf("transcription requires a media file and selected model")
 	}
 
@@ -58,12 +83,12 @@ func (a *App) beginTranscription(request transcription.StartRequest) (transcript
 	snapshot := transcription.Snapshot{
 		Active:   true,
 		CanRetry: false,
-		FilePath: request.MediaPath,
-		FileName: filepath.Base(request.MediaPath),
-		ModelID:  request.ModelID,
+		FilePath: serviceRequest.MediaPath,
+		FileName: filepath.Base(serviceRequest.MediaPath),
+		ModelID:  serviceRequest.ModelID,
 		Stage:    transcription.StagePreparingMedia,
 	}
-	a.transcriptionState.lastRequest = request
+	a.transcriptionState.lastRequest = serviceRequest
 	a.transcriptionState.snapshot = snapshot
 	a.transcriptionState.mu.Unlock()
 
@@ -71,7 +96,7 @@ func (a *App) beginTranscription(request transcription.StartRequest) (transcript
 
 	go func() {
 		ctx := context.Background()
-		runErr := service.Start(ctx, request, func(update transcription.Snapshot) {
+		runErr := service.Start(ctx, serviceRequest, func(update transcription.Snapshot) {
 			a.transcriptionState.mu.Lock()
 			a.transcriptionState.snapshot = update
 			a.transcriptionState.mu.Unlock()
@@ -84,9 +109,9 @@ func (a *App) beginTranscription(request transcription.StartRequest) (transcript
 			a.transcriptionState.snapshot = transcription.Snapshot{
 				Active:   false,
 				CanRetry: false,
-				FilePath: request.MediaPath,
-				FileName: filepath.Base(request.MediaPath),
-				ModelID:  request.ModelID,
+				FilePath: serviceRequest.MediaPath,
+				FileName: filepath.Base(serviceRequest.MediaPath),
+				ModelID:  serviceRequest.ModelID,
 			}
 			completed := a.transcriptionState.snapshot
 			a.transcriptionState.mu.Unlock()
@@ -107,10 +132,16 @@ func (a *App) beginTranscription(request transcription.StartRequest) (transcript
 		a.transcriptionState.snapshot = transcription.Snapshot{
 			Active:         false,
 			CanRetry:       true,
-			FilePath:       request.MediaPath,
-			FileName:       filepath.Base(request.MediaPath),
-			ModelID:        request.ModelID,
+			FilePath:       serviceRequest.MediaPath,
+			FileName:       filepath.Base(serviceRequest.MediaPath),
+			ModelID:        serviceRequest.ModelID,
 			FailureSummary: summary,
+		}
+		if failure != nil {
+			a.transcriptionState.snapshot.FailedStage = failure.Stage
+			a.transcriptionState.snapshot.PartIndex = failure.PartIndex
+			a.transcriptionState.snapshot.PartCount = failure.PartCount
+			a.transcriptionState.snapshot.CanRetry = failure.Retryable
 		}
 		failed := a.transcriptionState.snapshot
 		a.transcriptionState.mu.Unlock()

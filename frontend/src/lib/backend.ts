@@ -25,6 +25,7 @@ export interface DirectoryPreferences {
 
 export interface ProcessingPreferences {
   alignmentChunkMinutes: number;
+  oneWordPerSubtitle: boolean;
 }
 
 export interface Preferences {
@@ -80,10 +81,21 @@ export interface StartTranscriptionRequest {
   modelID: ModelID;
 }
 
+export type TranscriptionStage =
+  | ""
+  | "Preparing media"
+  | "Downloading model"
+  | "Transcribing"
+  | "Aligning"
+  | "Building subtitles";
+
 export interface TranscriptionSnapshot {
   active: boolean;
   canRetry: boolean;
-  stage: "" | "Preparing media" | "Downloading model" | "Transcribing";
+  stage: TranscriptionStage;
+  failedStage: TranscriptionStage;
+  partIndex: number;
+  partCount: number;
   filePath: string;
   fileName: string;
   modelID: ModelID | "";
@@ -129,6 +141,7 @@ export const defaultPreferences: Preferences = {
   },
   processing: {
     alignmentChunkMinutes: 5,
+    oneWordPerSubtitle: false,
   },
 };
 
@@ -179,6 +192,9 @@ export const defaultTranscriptionSnapshot: TranscriptionSnapshot = {
   active: false,
   canRetry: false,
   stage: "",
+  failedStage: "",
+  partIndex: 0,
+  partCount: 0,
   filePath: "",
   fileName: "",
   modelID: "",

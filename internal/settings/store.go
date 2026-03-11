@@ -35,7 +35,8 @@ type DirectoryPreferences struct {
 }
 
 type ProcessingPreferences struct {
-	AlignmentChunkMinutes int `json:"alignmentChunkMinutes"`
+	AlignmentChunkMinutes int  `json:"alignmentChunkMinutes"`
+	OneWordPerSubtitle    bool `json:"oneWordPerSubtitle"`
 }
 
 type Store struct {

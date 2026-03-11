@@ -41,6 +41,7 @@ func TestSettingsPersistPreferences(t *testing.T) {
 		},
 		Processing: ProcessingPreferences{
 			AlignmentChunkMinutes: 4,
+			OneWordPerSubtitle:    true,
 		},
 	})
 	if err != nil {
@@ -62,5 +63,9 @@ func TestSettingsPersistPreferences(t *testing.T) {
 
 	if loaded.Processing.AlignmentChunkMinutes != 4 {
 		t.Fatalf("expected chunk minutes to persist, got %d", loaded.Processing.AlignmentChunkMinutes)
+	}
+
+	if !loaded.Processing.OneWordPerSubtitle {
+		t.Fatal("expected one-word subtitle mode to persist")
 	}
 }

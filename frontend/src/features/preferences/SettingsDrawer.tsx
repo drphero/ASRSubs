@@ -25,6 +25,8 @@ export function SettingsDrawer({
     return null;
   }
 
+  const outputControlsDisabled = preferences.processing.oneWordPerSubtitle;
+
   return (
     <div className="overlay-shell" role="presentation">
       <button aria-label="Close settings" className="overlay-backdrop" onClick={onClose} type="button" />
@@ -141,10 +143,32 @@ export function SettingsDrawer({
         </div>
 
         <div className="drawer-group">
+          <div className="field">
+            <span>Subtitle grouping</span>
+            <label className="checkbox-field">
+              <input
+                aria-label="One word per subtitle"
+                checked={preferences.processing.oneWordPerSubtitle}
+                onChange={(event) =>
+                  onPreferencesChange({
+                    ...preferences,
+                    processing: {
+                      ...preferences.processing,
+                      oneWordPerSubtitle: event.target.checked,
+                    },
+                  })
+                }
+                type="checkbox"
+              />
+              <strong>One word per subtitle</strong>
+            </label>
+          </div>
+
           <label className="field">
             <span>Max line length</span>
             <input
               aria-label="Max line length"
+              disabled={outputControlsDisabled}
               min={20}
               onChange={(event) =>
                 onPreferencesChange({
@@ -164,6 +188,7 @@ export function SettingsDrawer({
             <span>Lines per subtitle</span>
             <input
               aria-label="Lines per subtitle"
+              disabled={outputControlsDisabled}
               min={1}
               onChange={(event) =>
                 onPreferencesChange({
@@ -178,6 +203,10 @@ export function SettingsDrawer({
               value={preferences.output.linesPerSubtitle}
             />
           </label>
+
+          {outputControlsDisabled ? (
+            <p className="inline-feedback">Line length and line count stay off while one-word subtitles are enabled.</p>
+          ) : null}
 
           <label className="field">
             <span>Alignment chunk size (minutes)</span>

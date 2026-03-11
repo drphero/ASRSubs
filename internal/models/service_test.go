@@ -23,6 +23,10 @@ func TestCatalogIncludesSupportedModels(t *testing.T) {
 	if !large.Default {
 		t.Fatal("expected Qwen3-ASR-1.7B to be the default model")
 	}
+
+	if _, ok := Lookup(ForcedAlignerID); !ok {
+		t.Fatal("expected internal aligner to be addressable")
+	}
 }
 
 func TestModelDownloadTransitionsToReady(t *testing.T) {

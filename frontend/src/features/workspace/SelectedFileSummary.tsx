@@ -4,6 +4,7 @@ type SelectedFileSummaryProps = {
   error: string | null;
   file: MediaMetadata;
   onRetryTranscription: () => void | Promise<unknown>;
+  transcriptionFailedStage: string;
   transcriptionFailure: string;
   transcriptionRetryAvailable: boolean;
 };
@@ -12,9 +13,12 @@ export function SelectedFileSummary({
   error,
   file,
   onRetryTranscription,
+  transcriptionFailedStage,
   transcriptionFailure,
   transcriptionRetryAvailable,
 }: SelectedFileSummaryProps) {
+  const retryLabel = transcriptionFailedStage ? `Retry ${transcriptionFailedStage.toLowerCase()}` : "Retry transcription";
+
   return (
     <section className="workspace-card selected-file-card" aria-label="selected file summary">
       <div className="selected-file-intro">
@@ -48,11 +52,11 @@ export function SelectedFileSummary({
       {transcriptionFailure ? (
         <div className="transcription-inline-state">
           <p className="inline-feedback inline-feedback-error" role="alert">
-            {transcriptionFailure}
+            {transcriptionFailedStage ? `${transcriptionFailedStage} failed. ${transcriptionFailure}` : transcriptionFailure}
           </p>
           {transcriptionRetryAvailable ? (
             <button className="ghost-action" onClick={onRetryTranscription} type="button">
-              Retry transcription
+              {retryLabel}
             </button>
           ) : null}
         </div>

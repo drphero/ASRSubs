@@ -2,36 +2,23 @@ package transcription
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"ASRSubs/internal/models"
 	asrruntime "ASRSubs/internal/runtime"
 )
 
-func TestTranscriptionRunsStagesToWorker(t *testing.T) {
-	modelService := readyModelService(t)
-	service := NewService(
-		newFakeRuntimeService(t),
-		modelService,
-		WithMediaPreparer(func(_ context.Context, inputPath string, outputPath string) error {
-			return os.WriteFile(outputPath, []byte(inputPath), 0o644)
-		}),
-		WithWorkerRunner(func(_ context.Context, request asrruntime.WorkerRequest) (asrruntime.WorkerResponse, error) {
-			if request.Command != "transcribe" {
-				t.Fatalf("unexpected worker command: %s", request.Command)
-			}
-			if request.AudioPath == "" || request.ModelPath == "" {
-				t.Fatal("expected prepared audio and model path")
-			}
-			return asrruntime.WorkerResponse{OK: true, Command: "transcribe"}, nil
-		}),
-	)
+func TestTranscriptionRunsShortPipelineWithAlignmentAndSubtitles(t *testing.T) {
+	harness := newTestHarness(t, testServiceConfig{})
+	stages := []string{}
 
-	stages := make([]string, 0, 3)
-	err := service.Start(context.Background(), StartRequest{
+	err := harness.service.Start(context.Background(), StartRequest{
 		MediaPath: filepath.Join(t.TempDir(), "clip.wav"),
 		ModelID:   "Qwen3-ASR-1.7B",
 	}, func(snapshot Snapshot) {
@@ -41,7 +28,7 @@ func TestTranscriptionRunsStagesToWorker(t *testing.T) {
 		t.Fatalf("start transcription: %v", err)
 	}
 
-	expected := []string{StagePreparingMedia, StageTranscribing}
+	expected := []string{StagePreparingMedia, StageDownloading, StageTranscribing, StageAligning, StageBuildingSubtitles}
 	if len(stages) != len(expected) {
 		t.Fatalf("unexpected stages: %v", stages)
 	}
@@ -50,12 +37,175 @@ func TestTranscriptionRunsStagesToWorker(t *testing.T) {
 			t.Fatalf("expected stage %s at %d, got %s", stage, index, stages[index])
 		}
 	}
+
+	run := harness.service.lastRun
+	if run == nil {
+		t.Fatal("expected run state to be stored")
+	}
+	if !fileExists(run.TranscriptPath) {
+		t.Fatalf("expected transcript artifact at %s", run.TranscriptPath)
+	}
+	if !fileExists(run.AlignmentPath) {
+		t.Fatalf("expected alignment artifact at %s", run.AlignmentPath)
+	}
+	if !fileExists(run.TimelinePath) {
+		t.Fatalf("expected timeline artifact at %s", run.TimelinePath)
+	}
 }
 
-func TestTranscriptionDownloadsMissingModelBeforeWorker(t *testing.T) {
-	modelService := models.NewServiceAtRoot(t.TempDir(), nil, models.WithDownloader(func(_ context.Context, model models.ModelDescriptor, destination string) error {
+func TestTranscriptionDownloadsInternalAlignerBeforeAlignment(t *testing.T) {
+	rootDir := t.TempDir()
+	modelService := models.NewServiceAtRoot(rootDir, nil, models.WithDownloader(func(_ context.Context, model models.ModelDescriptor, destination string) error {
 		return os.WriteFile(filepath.Join(destination, "weights.bin"), []byte(model.ID), 0o644)
 	}))
+
+	harness := newTestHarness(t, testServiceConfig{modelService: modelService})
+	if err := harness.service.Start(context.Background(), StartRequest{
+		MediaPath: filepath.Join(t.TempDir(), "clip.wav"),
+		ModelID:   "Qwen3-ASR-0.6B",
+	}, func(Snapshot) {}); err != nil {
+		t.Fatalf("start transcription: %v", err)
+	}
+
+	alignerStatus, err := modelService.GetModelState(models.ForcedAlignerID)
+	if err != nil {
+		t.Fatalf("get aligner state: %v", err)
+	}
+	if alignerStatus.State != models.StateReady {
+		t.Fatalf("expected internal aligner to be ready, got %s", alignerStatus.State)
+	}
+
+	snapshot := modelService.Snapshot()
+	if len(snapshot.Models) != 2 {
+		t.Fatalf("expected only selectable models in snapshot, got %d", len(snapshot.Models))
+	}
+}
+
+func TestTranscriptionRetryResumesFromAlignmentArtifacts(t *testing.T) {
+	harness := newTestHarness(t, testServiceConfig{
+		failAlignOnce: true,
+	})
+
+	err := harness.service.Start(context.Background(), StartRequest{
+		MediaPath: filepath.Join(t.TempDir(), "clip.wav"),
+		ModelID:   "Qwen3-ASR-1.7B",
+	}, func(Snapshot) {})
+	if err == nil {
+		t.Fatal("expected alignment failure")
+	}
+
+	failure, ok := err.(*Failure)
+	if !ok {
+		t.Fatalf("expected Failure, got %T", err)
+	}
+	if failure.Stage != StageAligning {
+		t.Fatalf("expected aligning stage, got %s", failure.Stage)
+	}
+	if !fileExists(harness.service.lastRun.TranscriptPath) {
+		t.Fatal("expected transcript artifact to survive failed alignment")
+	}
+
+	before := harness.tracker.calls["transcribe"]
+	err = harness.service.Start(context.Background(), harness.service.lastRun.Request, func(Snapshot) {})
+	if err != nil {
+		t.Fatalf("retry transcription: %v", err)
+	}
+	if harness.tracker.calls["transcribe"] != before {
+		t.Fatal("expected retry to reuse saved transcript artifact")
+	}
+}
+
+func TestTranscriptionChunksLongMediaAndMergesOffsets(t *testing.T) {
+	harness := newTestHarness(t, testServiceConfig{
+		duration: 12 * time.Minute,
+	})
+
+	partCounts := []int{}
+	err := harness.service.Start(context.Background(), StartRequest{
+		MediaPath: filepath.Join(t.TempDir(), "long.wav"),
+		ModelID:   "Qwen3-ASR-1.7B",
+	}, func(snapshot Snapshot) {
+		if snapshot.PartCount > 0 {
+			partCounts = append(partCounts, snapshot.PartCount)
+		}
+	})
+	if err != nil {
+		t.Fatalf("start transcription: %v", err)
+	}
+
+	if len(harness.service.lastRun.ChunkPlan) != 3 {
+		t.Fatalf("expected 3 chunks, got %d", len(harness.service.lastRun.ChunkPlan))
+	}
+
+	var timeline Timeline
+	if err := readJSON(harness.service.lastRun.TimelinePath, &timeline); err != nil {
+		t.Fatalf("read timeline: %v", err)
+	}
+	if len(timeline.Words) == 0 {
+		t.Fatal("expected merged words")
+	}
+	if timeline.Words[len(timeline.Words)-1].StartMS < 10*60*1000 {
+		t.Fatalf("expected merged offsets to include later chunks, got %d", timeline.Words[len(timeline.Words)-1].StartMS)
+	}
+	if len(partCounts) == 0 || partCounts[0] != 3 {
+		t.Fatalf("expected chunk progress to include 3 parts, got %v", partCounts)
+	}
+}
+
+func TestTranscriptionChunkFailureRetriesOnceBeforeReturningFailure(t *testing.T) {
+	harness := newTestHarness(t, testServiceConfig{
+		duration:            8 * time.Minute,
+		failChunkAlignments: map[int]int{2: 2},
+	})
+
+	err := harness.service.Start(context.Background(), StartRequest{
+		MediaPath: filepath.Join(t.TempDir(), "long.wav"),
+		ModelID:   "Qwen3-ASR-1.7B",
+	}, func(Snapshot) {})
+	if err == nil {
+		t.Fatal("expected chunk alignment failure")
+	}
+
+	failure, ok := err.(*Failure)
+	if !ok {
+		t.Fatalf("expected Failure, got %T", err)
+	}
+	if failure.PartIndex != 2 || failure.PartCount != 2 {
+		t.Fatalf("expected failure on second chunk, got part %d/%d", failure.PartIndex, failure.PartCount)
+	}
+	if harness.tracker.calls["align"] != 3 {
+		t.Fatalf("expected one retry for failing chunk, got %d align calls", harness.tracker.calls["align"])
+	}
+}
+
+type testServiceConfig struct {
+	modelService        *models.Service
+	duration            time.Duration
+	failAlignOnce       bool
+	failChunkAlignments map[int]int
+	subtitleError       error
+}
+
+type testHarness struct {
+	service *Service
+	tracker *workerTracker
+}
+
+func newTestHarness(t *testing.T, cfg testServiceConfig) testHarness {
+	t.Helper()
+
+	modelService := cfg.modelService
+	if modelService == nil {
+		modelService = models.NewServiceAtRoot(t.TempDir(), nil, models.WithDownloader(func(_ context.Context, model models.ModelDescriptor, destination string) error {
+			return os.WriteFile(filepath.Join(destination, "weights.bin"), []byte(model.ID), 0o644)
+		}))
+	}
+
+	tracker := &workerTracker{
+		calls:               map[string]int{},
+		failAlignOnce:       cfg.failAlignOnce,
+		failChunkAlignments: cfg.failChunkAlignments,
+	}
 
 	service := NewService(
 		newFakeRuntimeService(t),
@@ -63,70 +213,98 @@ func TestTranscriptionDownloadsMissingModelBeforeWorker(t *testing.T) {
 		WithMediaPreparer(func(_ context.Context, inputPath string, outputPath string) error {
 			return os.WriteFile(outputPath, []byte(inputPath), 0o644)
 		}),
-		WithWorkerRunner(func(_ context.Context, request asrruntime.WorkerRequest) (asrruntime.WorkerResponse, error) {
-			return asrruntime.WorkerResponse{OK: true, Command: request.Command}, nil
+		WithDurationProber(func(context.Context, string) (time.Duration, error) {
+			if cfg.duration > 0 {
+				return cfg.duration, nil
+			}
+			return 2 * time.Minute, nil
 		}),
+		WithMediaSegmenter(func(_ context.Context, _ string, outputPath string, _ time.Duration, _ time.Duration) error {
+			return os.WriteFile(outputPath, []byte("chunk"), 0o644)
+		}),
+		WithWorkerRunner(tracker.run),
+		WithSubtitleBuilder(func(words []WordTimestamp, prefs RunPreferences) ([]SubtitleSegment, error) {
+			if cfg.subtitleError != nil {
+				return nil, cfg.subtitleError
+			}
+			return BuildSubtitles(words, prefs)
+		}),
+		WithTempDir(t.TempDir()),
 	)
 
-	stages := []string{}
-	if err := service.Start(context.Background(), StartRequest{
-		MediaPath: filepath.Join(t.TempDir(), "clip.wav"),
-		ModelID:   "Qwen3-ASR-0.6B",
-	}, func(snapshot Snapshot) {
-		stages = append(stages, snapshot.Stage)
-	}); err != nil {
-		t.Fatalf("start transcription: %v", err)
-	}
-
-	if len(stages) != 3 {
-		t.Fatalf("expected 3 stages, got %v", stages)
-	}
-	if stages[1] != StageDownloading {
-		t.Fatalf("expected download stage, got %v", stages)
+	return testHarness{
+		service: service,
+		tracker: tracker,
 	}
 }
 
-func TestTranscriptionReturnsFailureSummary(t *testing.T) {
-	service := NewService(
-		newFakeRuntimeService(t),
-		readyModelService(t),
-		WithMediaPreparer(func(context.Context, string, string) error {
-			return errors.New("ffmpeg missing")
-		}),
-	)
+type workerTracker struct {
+	calls               map[string]int
+	failAlignOnce       bool
+	failChunkAlignments map[int]int
+}
 
-	err := service.Start(context.Background(), StartRequest{
-		MediaPath: filepath.Join(t.TempDir(), "clip.wav"),
-		ModelID:   "Qwen3-ASR-1.7B",
-	}, func(Snapshot) {})
-	if err == nil {
-		t.Fatal("expected failure")
-	}
+func (w *workerTracker) run(_ context.Context, request asrruntime.WorkerRequest) (asrruntime.WorkerResponse, error) {
+	w.calls[request.Command]++
 
-	failure, ok := err.(*Failure)
-	if !ok {
-		t.Fatalf("expected Failure, got %T", err)
-	}
-	if failure.Summary != "Media preparation failed." {
-		t.Fatalf("unexpected summary: %s", failure.Summary)
+	switch request.Command {
+	case "transcribe":
+		return asrruntime.WorkerResponse{
+			OK:      true,
+			Command: "transcribe",
+			Details: mustJSON(asrruntime.TranscriptPayload{
+				Text:     "alpha beta gamma",
+				Language: "en",
+				Words: []asrruntime.TranscriptToken{
+					{Text: "alpha"},
+					{Text: "beta"},
+					{Text: "gamma"},
+				},
+			}),
+		}, nil
+	case "align":
+		if w.failAlignOnce {
+			w.failAlignOnce = false
+			return asrruntime.WorkerResponse{}, errors.New("aligner crashed")
+		}
+
+		chunkIndex := 0
+		base := filepath.Base(request.AudioPath)
+		switch {
+		case strings.Contains(base, "chunk-01"):
+			chunkIndex = 1
+		case strings.Contains(base, "chunk-02"):
+			chunkIndex = 2
+		case strings.Contains(base, "chunk-03"):
+			chunkIndex = 3
+		}
+
+		if remaining := w.failChunkAlignments[chunkIndex]; remaining > 0 {
+			w.failChunkAlignments[chunkIndex] = remaining - 1
+			return asrruntime.WorkerResponse{}, errors.New("chunk alignment failed")
+		}
+
+		words := []asrruntime.AlignedWord{
+			{Text: "alpha", StartMS: 0, EndMS: 320, Confidence: 0.99},
+			{Text: "beta", StartMS: 400, EndMS: 760, Confidence: 0.99},
+			{Text: "gamma", StartMS: 840, EndMS: 1240, Confidence: 0.99},
+		}
+		return asrruntime.WorkerResponse{
+			OK:      true,
+			Command: "align",
+			Details: mustJSON(asrruntime.AlignmentPayload{Words: words}),
+		}, nil
+	default:
+		return asrruntime.WorkerResponse{}, errors.New("unsupported worker command")
 	}
 }
 
-func readyModelService(t *testing.T) *models.Service {
-	t.Helper()
-
-	service := models.NewServiceAtRoot(t.TempDir(), nil, models.WithDownloader(func(_ context.Context, model models.ModelDescriptor, destination string) error {
-		return os.WriteFile(filepath.Join(destination, "weights.bin"), []byte(model.ID), 0o644)
-	}))
-
-	if _, err := service.StartDownload("Qwen3-ASR-1.7B"); err != nil {
-		t.Fatalf("start download: %v", err)
+func mustJSON(value any) []byte {
+	data, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
 	}
-	if _, err := service.EnsureReady(context.Background(), "Qwen3-ASR-1.7B"); err != nil {
-		t.Fatalf("ensure model ready: %v", err)
-	}
-
-	return service
+	return data
 }
 
 func writeFakeTranscriptionRuntime(t *testing.T) string {

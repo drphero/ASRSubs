@@ -6,6 +6,9 @@ type ProcessingViewProps = {
 };
 
 export function ProcessingView({ selectedModelStatus, snapshot }: ProcessingViewProps) {
+  const partLabel =
+    snapshot.partCount > 1 && snapshot.partIndex > 0 ? `Part ${snapshot.partIndex} of ${snapshot.partCount}` : null;
+
   return (
     <section className="processing-view" aria-label="processing view">
       <div className="processing-orbit" aria-hidden="true" />
@@ -16,6 +19,7 @@ export function ProcessingView({ selectedModelStatus, snapshot }: ProcessingView
           ASRSubs is running the selected file entirely on this machine. Only the current stage stays visible
           until the run completes or returns you to the workspace.
         </p>
+        {partLabel ? <p className="inline-feedback">{partLabel}</p> : null}
         <div className="processing-meta-grid">
           <div className="processing-meta-card">
             <span>Current file</span>

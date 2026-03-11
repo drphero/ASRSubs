@@ -12,10 +12,12 @@ import (
 )
 
 type WorkerRequest struct {
-	Command   string `json:"command"`
-	AudioPath string `json:"audioPath,omitempty"`
-	ModelPath string `json:"modelPath,omitempty"`
-	Language  string `json:"language,omitempty"`
+	Command     string             `json:"command"`
+	AudioPath   string             `json:"audioPath,omitempty"`
+	ModelPath   string             `json:"modelPath,omitempty"`
+	AlignerPath string             `json:"alignerPath,omitempty"`
+	Language    string             `json:"language,omitempty"`
+	Transcript  *TranscriptPayload `json:"transcript,omitempty"`
 }
 
 type WorkerResponse struct {
@@ -32,6 +34,29 @@ type WorkerError struct {
 	Stderr   string
 	Message  string
 	Cause    error
+}
+
+type TranscriptPayload struct {
+	Text         string            `json:"text"`
+	Language     string            `json:"language,omitempty"`
+	Words        []TranscriptToken `json:"words"`
+	ArtifactPath string            `json:"artifactPath,omitempty"`
+}
+
+type TranscriptToken struct {
+	Text string `json:"text"`
+}
+
+type AlignmentPayload struct {
+	Words        []AlignedWord `json:"words"`
+	ArtifactPath string        `json:"artifactPath,omitempty"`
+}
+
+type AlignedWord struct {
+	Text       string  `json:"text"`
+	StartMS    int     `json:"startMs"`
+	EndMS      int     `json:"endMs"`
+	Confidence float64 `json:"confidence,omitempty"`
 }
 
 func (e *WorkerError) Error() string {
@@ -209,6 +234,18 @@ func (s *Service) RunWorker(ctx context.Context, request WorkerRequest) (WorkerR
 
 func (s *Service) Smoke(ctx context.Context) (WorkerResponse, error) {
 	return s.RunWorker(ctx, WorkerRequest{Command: "smoke"})
+}
+
+func (r WorkerResponse) DecodeDetails(target any) error {
+	if len(bytes.TrimSpace(r.Details)) == 0 {
+		return fmt.Errorf("worker response did not include details")
+	}
+
+	if err := json.Unmarshal(r.Details, target); err != nil {
+		return fmt.Errorf("decode worker details: %w", err)
+	}
+
+	return nil
 }
 
 func decodeWorkerResponse(data []byte) (WorkerResponse, error) {

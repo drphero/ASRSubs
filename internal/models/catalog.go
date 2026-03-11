@@ -9,9 +9,12 @@ type ModelDescriptor struct {
 	QualityDescription string `json:"qualityDescription"`
 	SystemRequirement  string `json:"systemRequirement"`
 	Default            bool   `json:"default"`
+	Internal           bool   `json:"-"`
 }
 
-var catalog = []ModelDescriptor{
+const ForcedAlignerID = "Qwen3-ForcedAligner-0.6B"
+
+var selectableCatalog = []ModelDescriptor{
 	{
 		ID:                 "Qwen3-ASR-1.7B",
 		Name:               "Qwen3-ASR-1.7B",
@@ -34,18 +37,39 @@ var catalog = []ModelDescriptor{
 	},
 }
 
+var internalCatalog = []ModelDescriptor{
+	{
+		ID:                 ForcedAlignerID,
+		Name:               ForcedAlignerID,
+		RepoID:             "Qwen/Qwen3-ForcedAligner-0.6B",
+		Description:        "Internal forced aligner used automatically for timestamp generation.",
+		SpeedDescription:   "Managed automatically",
+		QualityDescription: "Word-level timestamps",
+		SystemRequirement:  "Hidden internal dependency",
+		Default:            false,
+		Internal:           true,
+	},
+}
+
 func Catalog() []ModelDescriptor {
-	cloned := make([]ModelDescriptor, len(catalog))
-	copy(cloned, catalog)
+	cloned := make([]ModelDescriptor, len(selectableCatalog))
+	copy(cloned, selectableCatalog)
 	return cloned
 }
 
 func Lookup(id string) (ModelDescriptor, bool) {
-	for _, model := range catalog {
+	for _, model := range allCatalog() {
 		if model.ID == id {
 			return model, true
 		}
 	}
 
 	return ModelDescriptor{}, false
+}
+
+func allCatalog() []ModelDescriptor {
+	combined := make([]ModelDescriptor, 0, len(selectableCatalog)+len(internalCatalog))
+	combined = append(combined, selectableCatalog...)
+	combined = append(combined, internalCatalog...)
+	return combined
 }

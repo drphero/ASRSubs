@@ -94,6 +94,7 @@ export function AppShell({
                   error={intakeError}
                   file={selectedFile}
                   onRetryTranscription={onRetryTranscription}
+                  transcriptionFailedStage={transcription.failedStage}
                   transcriptionFailure={transcription.failureSummary}
                   transcriptionRetryAvailable={transcription.canRetry}
                 />

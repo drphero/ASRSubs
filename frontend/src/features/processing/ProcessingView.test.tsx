@@ -23,4 +23,24 @@ describe("ProcessingView", () => {
     expect(screen.getByText("clip.wav")).toBeInTheDocument();
     expect(screen.getByText("Qwen3-ASR-1.7B")).toBeInTheDocument();
   });
+
+  it("shows chunk progress when part counters are available", () => {
+    render(
+      <ProcessingView
+        selectedModelStatus={defaultModelSnapshot.models[0]}
+        snapshot={{
+          ...defaultTranscriptionSnapshot,
+          active: true,
+          fileName: "feature.wav",
+          filePath: "/tmp/feature.wav",
+          modelID: "Qwen3-ASR-1.7B",
+          stage: "Aligning",
+          partIndex: 2,
+          partCount: 4,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Part 2 of 4")).toBeInTheDocument();
+  });
 });

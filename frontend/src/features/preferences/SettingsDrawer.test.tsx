@@ -68,4 +68,28 @@ describe("SettingsDrawer", () => {
 
     expect(onDownloadModel).toHaveBeenCalledWith("Qwen3-ASR-1.7B");
   });
+
+  it("disables line controls when one-word subtitles are enabled", () => {
+    render(
+      <SettingsDrawer
+        error={null}
+        modelStatuses={defaultModelSnapshot.models}
+        onClose={vi.fn()}
+        onDeleteModel={vi.fn()}
+        onDownloadModel={vi.fn()}
+        onPreferencesChange={vi.fn()}
+        open
+        preferences={{
+          ...defaultPreferences,
+          processing: {
+            ...defaultPreferences.processing,
+            oneWordPerSubtitle: true,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByLabelText("Max line length")).toBeDisabled();
+    expect(screen.getByLabelText("Lines per subtitle")).toBeDisabled();
+  });
 });
