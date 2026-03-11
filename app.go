@@ -4,12 +4,14 @@ import (
 	"context"
 
 	"ASRSubs/internal/intake"
+	asrruntime "ASRSubs/internal/runtime"
 	"ASRSubs/internal/settings"
 )
 
 type App struct {
 	ctx      context.Context
 	intake   *intake.Service
+	runtime  *asrruntime.Service
 	settings *settings.Store
 
 	diagnostics diagnosticsState
@@ -31,6 +33,13 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
+	runtimeService, err := asrruntime.NewService("ASRSubs")
+	if err != nil {
+		a.recordDiagnostic("error", "runtime", "Managed runtime storage could not be prepared.")
+		return
+	}
+
 	a.settings = store
+	a.runtime = runtimeService
 	a.recordDiagnostic("info", "app", "The shell is ready for a media file.")
 }
