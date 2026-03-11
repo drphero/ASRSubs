@@ -18,7 +18,7 @@ func TestSettingsLoadDefaults(t *testing.T) {
 		t.Fatalf("expected dark theme, got %s", preferences.Theme)
 	}
 
-	if preferences.Model != ModelSmall {
+	if preferences.Model != ModelLarge {
 		t.Fatalf("expected default model, got %s", preferences.Model)
 	}
 }

@@ -1,5 +1,6 @@
 export type ThemeMode = "dark" | "light";
 export type ModelID = "Qwen3-ASR-0.6B" | "Qwen3-ASR-1.7B";
+export type ModelDownloadState = "not_downloaded" | "downloading" | "ready" | "failed";
 
 export interface MediaMetadata {
   path: string;
@@ -54,10 +55,34 @@ export interface DiagnosticsSnapshot {
   entries: DiagnosticsEntry[];
 }
 
+export interface ModelStatus {
+  id: ModelID;
+  name: string;
+  repoId: string;
+  description: string;
+  speedDescription: string;
+  qualityDescription: string;
+  systemRequirement: string;
+  default: boolean;
+  state: ModelDownloadState;
+  stateLabel: "Not downloaded" | "Downloading" | "Ready" | "Failed";
+  path: string;
+  error?: string;
+}
+
+export interface ModelSnapshot {
+  version: number;
+  models: ModelStatus[];
+}
+
 type GoAppApi = {
+  DeleteModel: (modelID: ModelID) => Promise<ModelStatus>;
+  GetModelState: (modelID: ModelID) => Promise<ModelStatus>;
   GetDiagnosticsSnapshot: () => Promise<DiagnosticsSnapshot>;
   LoadPreferences: () => Promise<Preferences>;
+  LoadModelSnapshot: () => Promise<ModelSnapshot>;
   SelectMediaFile: () => Promise<MediaMetadata | null>;
+  StartModelDownload: (modelID: ModelID) => Promise<ModelStatus>;
   UpdatePreferences: (preferences: Preferences) => Promise<Preferences>;
   ValidateMediaPath: (path: string) => Promise<MediaMetadata>;
 };
@@ -74,7 +99,7 @@ declare global {
 
 export const defaultPreferences: Preferences = {
   version: 1,
-  model: "Qwen3-ASR-0.6B",
+  model: "Qwen3-ASR-1.7B",
   theme: "dark",
   output: {
     maxLineLength: 42,
@@ -96,6 +121,40 @@ export const defaultDiagnostics: DiagnosticsSnapshot = {
     level: "info",
   },
   entries: [],
+};
+
+const defaultModelStatuses: ModelStatus[] = [
+  {
+    id: "Qwen3-ASR-1.7B",
+    name: "Qwen3-ASR-1.7B",
+    repoId: "Qwen/Qwen3-ASR-1.7B",
+    description: "Highest accuracy for mixed speech at the cost of a heavier local runtime footprint.",
+    speedDescription: "Slower, best quality",
+    qualityDescription: "Best accuracy on harder audio",
+    systemRequirement: "More RAM and longer first download",
+    default: true,
+    state: "not_downloaded",
+    stateLabel: "Not downloaded",
+    path: "",
+  },
+  {
+    id: "Qwen3-ASR-0.6B",
+    name: "Qwen3-ASR-0.6B",
+    repoId: "Qwen/Qwen3-ASR-0.6B",
+    description: "Faster startup with a lighter model footprint for smaller machines and quick checks.",
+    speedDescription: "Faster, lighter runtime",
+    qualityDescription: "Good quality for quicker runs",
+    systemRequirement: "Lower memory use",
+    default: false,
+    state: "not_downloaded",
+    stateLabel: "Not downloaded",
+    path: "",
+  },
+];
+
+export const defaultModelSnapshot: ModelSnapshot = {
+  version: 1,
+  models: defaultModelStatuses,
 };
 
 function getAppMethod<K extends keyof GoAppApi>(name: K): GoAppApi[K] {
@@ -127,4 +186,20 @@ export function validateMediaPath(path: string) {
 
 export function getDiagnosticsSnapshot() {
   return getAppMethod("GetDiagnosticsSnapshot")();
+}
+
+export function loadModelSnapshot() {
+  return getAppMethod("LoadModelSnapshot")();
+}
+
+export function getModelState(modelID: ModelID) {
+  return getAppMethod("GetModelState")(modelID);
+}
+
+export function startModelDownload(modelID: ModelID) {
+  return getAppMethod("StartModelDownload")(modelID);
+}
+
+export function deleteModel(modelID: ModelID) {
+  return getAppMethod("DeleteModel")(modelID);
 }

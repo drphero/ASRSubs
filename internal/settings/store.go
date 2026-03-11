@@ -61,7 +61,7 @@ func NewStoreAtPath(path string) *Store {
 func DefaultPreferences() Preferences {
 	return Preferences{
 		Version: 1,
-		Model:   ModelSmall,
+		Model:   ModelLarge,
 		Theme:   ThemeDark,
 		Output: OutputPreferences{
 			MaxLineLength:    42,
