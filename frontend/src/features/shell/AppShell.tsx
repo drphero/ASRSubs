@@ -2,6 +2,7 @@ import type { DiagnosticsSnapshot, MediaMetadata, ModelStatus, Preferences } fro
 import { DetailsPanel } from "../diagnostics/DetailsPanel";
 import { MediaDropzone } from "../intake/MediaDropzone";
 import { SettingsDrawer } from "../preferences/SettingsDrawer";
+import { ProcessingView } from "../processing/ProcessingView";
 import { SelectedFileSummary } from "../workspace/SelectedFileSummary";
 import { WorkspaceHeader } from "../workspace/WorkspaceHeader";
 
@@ -19,12 +20,15 @@ type AppShellProps = {
   onOpenDetails: () => void;
   onOpenSettings: () => void;
   onPreferencesChange: (preferences: Preferences) => void | Promise<unknown>;
+  onRetryTranscription: () => void | Promise<unknown>;
+  onStartTranscription: () => void | Promise<unknown>;
   preferences: Preferences;
   preferencesError: string | null;
   selectedFile: MediaMetadata | null;
   selectedModelStatus: ModelStatus | null;
   showDetails: boolean;
   showSettings: boolean;
+  transcription: import("../../lib/backend").TranscriptionSnapshot;
 };
 
 export function AppShell({
@@ -41,12 +45,15 @@ export function AppShell({
   onOpenDetails,
   onOpenSettings,
   onPreferencesChange,
+  onRetryTranscription,
+  onStartTranscription,
   preferences,
   preferencesError,
   selectedFile,
   selectedModelStatus,
   showDetails,
   showSettings,
+  transcription,
 }: AppShellProps) {
   return (
     <div className="app-shell">
@@ -69,7 +76,9 @@ export function AppShell({
       </header>
 
       <main className="shell-main">
-        {hasSelection ? (
+        {transcription.active ? (
+          <ProcessingView selectedModelStatus={selectedModelStatus} snapshot={transcription} />
+        ) : hasSelection ? (
           <section className="workspace-view" aria-label="workspace view">
             {selectedFile ? (
               <>
@@ -78,9 +87,16 @@ export function AppShell({
                   onBrowse={onBrowse}
                   onOpenDetails={onOpenDetails}
                   onOpenSettings={onOpenSettings}
+                  onStartTranscription={onStartTranscription}
                   selectedModelStatus={selectedModelStatus}
                 />
-                <SelectedFileSummary error={intakeError} file={selectedFile} />
+                <SelectedFileSummary
+                  error={intakeError}
+                  file={selectedFile}
+                  onRetryTranscription={onRetryTranscription}
+                  transcriptionFailure={transcription.failureSummary}
+                  transcriptionRetryAvailable={transcription.canRetry}
+                />
               </>
             ) : null}
           </section>

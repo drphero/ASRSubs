@@ -13,10 +13,13 @@ vi.mock("./lib/backend", async () => {
     ...actual,
     deleteModel: vi.fn(),
     getDiagnosticsSnapshot: vi.fn().mockResolvedValue(actual.defaultDiagnostics),
+    getTranscriptionSnapshot: vi.fn().mockResolvedValue(actual.defaultTranscriptionSnapshot),
     loadModelSnapshot: vi.fn().mockResolvedValue(actual.defaultModelSnapshot),
     loadPreferences: vi.fn().mockResolvedValue(actual.defaultPreferences),
+    retryTranscription: vi.fn(),
     selectMediaFile: vi.fn(),
     startModelDownload: vi.fn(),
+    startTranscription: vi.fn(),
     updatePreferences: vi.fn().mockResolvedValue(actual.defaultPreferences),
     validateMediaPath: vi.fn(),
   };

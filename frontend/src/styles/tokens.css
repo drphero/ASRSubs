@@ -272,6 +272,67 @@ button {
   align-content: start;
 }
 
+.processing-view {
+  width: min(100%, 920px);
+  position: relative;
+}
+
+.processing-orbit {
+  position: absolute;
+  inset: 32px 140px;
+  border-radius: 999px;
+  border: 1px dashed var(--border-strong);
+  opacity: 0.5;
+}
+
+.processing-card {
+  position: relative;
+  display: grid;
+  gap: 20px;
+  padding: 48px;
+  border-radius: 40px;
+  border: 1px solid var(--border-soft);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 38%),
+    var(--surface-2);
+  box-shadow: var(--shadow-heavy);
+}
+
+.processing-card h2 {
+  margin: 0;
+  font-size: clamp(2.6rem, 5vw, 4.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+
+.processing-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.processing-meta-card,
+.transcription-inline-state {
+  display: grid;
+  gap: 10px;
+}
+
+.processing-meta-card {
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-3);
+}
+
+.processing-meta-card span {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.processing-meta-card strong {
+  font-size: 1.05rem;
+}
+
 .workspace-header,
 .workspace-card {
   border-radius: 36px;
@@ -524,6 +585,19 @@ button {
 
   .workspace-header,
   .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .processing-card {
+    padding: 28px;
+    border-radius: 28px;
+  }
+
+  .processing-orbit {
+    inset: 16px;
+  }
+
+  .processing-meta-grid {
     grid-template-columns: 1fr;
   }
 

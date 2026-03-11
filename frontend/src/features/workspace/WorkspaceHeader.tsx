@@ -5,6 +5,7 @@ type WorkspaceHeaderProps = {
   onBrowse: () => void;
   onOpenDetails: () => void;
   onOpenSettings: () => void;
+  onStartTranscription: () => void | Promise<unknown>;
   selectedModelStatus: ModelStatus | null;
 };
 
@@ -13,6 +14,7 @@ export function WorkspaceHeader({
   onBrowse,
   onOpenDetails,
   onOpenSettings,
+  onStartTranscription,
   selectedModelStatus,
 }: WorkspaceHeaderProps) {
   return (
@@ -43,7 +45,10 @@ export function WorkspaceHeader({
         <button className="ghost-action" onClick={onOpenSettings} type="button">
           Settings
         </button>
-        <button className="primary-action" onClick={onBrowse} type="button">
+        <button className="primary-action" onClick={onStartTranscription} type="button">
+          Start Transcription
+        </button>
+        <button className="ghost-action" onClick={onBrowse} type="button">
           Replace File
         </button>
       </div>

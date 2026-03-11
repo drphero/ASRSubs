@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { EventsOff, EventsOn } from "../wailsjs/runtime/runtime";
 import { useFileIntake } from "./features/intake/useFileIntake";
 import { usePreferences } from "./features/preferences/usePreferences";
+import { useTranscriptionSession } from "./features/processing/useTranscriptionSession";
 import { AppShell } from "./features/shell/AppShell";
 import {
   defaultModelSnapshot,
@@ -32,6 +33,10 @@ export default function App() {
         },
       }));
     },
+  });
+  const transcription = useTranscriptionSession({
+    selectedFile: intake.selectedFile,
+    selectedModel: preferences.preferences.model,
   });
 
   useEffect(() => {
@@ -125,12 +130,15 @@ export default function App() {
       onOpenDetails={() => setShowDetails(true)}
       onOpenSettings={() => setShowSettings(true)}
       onPreferencesChange={preferences.replacePreferences}
+      onRetryTranscription={transcription.retry}
+      onStartTranscription={transcription.start}
       preferences={preferences.preferences}
-      preferencesError={preferences.error ?? modelError}
+      preferencesError={preferences.error ?? modelError ?? transcription.error}
       selectedFile={intake.selectedFile}
       selectedModelStatus={selectedModelStatus}
       showDetails={showDetails}
       showSettings={showSettings}
+      transcription={transcription.snapshot}
     />
   );
 }
