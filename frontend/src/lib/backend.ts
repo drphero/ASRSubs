@@ -75,14 +75,32 @@ export interface ModelSnapshot {
   models: ModelStatus[];
 }
 
+export interface StartTranscriptionRequest {
+  mediaPath: string;
+  modelID: ModelID;
+}
+
+export interface TranscriptionSnapshot {
+  active: boolean;
+  canRetry: boolean;
+  stage: "" | "Preparing media" | "Downloading model" | "Transcribing";
+  filePath: string;
+  fileName: string;
+  modelID: ModelID | "";
+  failureSummary: string;
+}
+
 type GoAppApi = {
   DeleteModel: (modelID: ModelID) => Promise<ModelStatus>;
   GetModelState: (modelID: ModelID) => Promise<ModelStatus>;
   GetDiagnosticsSnapshot: () => Promise<DiagnosticsSnapshot>;
+  GetTranscriptionSnapshot: () => Promise<TranscriptionSnapshot>;
   LoadPreferences: () => Promise<Preferences>;
   LoadModelSnapshot: () => Promise<ModelSnapshot>;
+  RetryTranscription: () => Promise<TranscriptionSnapshot>;
   SelectMediaFile: () => Promise<MediaMetadata | null>;
   StartModelDownload: (modelID: ModelID) => Promise<ModelStatus>;
+  StartTranscription: (request: StartTranscriptionRequest) => Promise<TranscriptionSnapshot>;
   UpdatePreferences: (preferences: Preferences) => Promise<Preferences>;
   ValidateMediaPath: (path: string) => Promise<MediaMetadata>;
 };
@@ -157,6 +175,16 @@ export const defaultModelSnapshot: ModelSnapshot = {
   models: defaultModelStatuses,
 };
 
+export const defaultTranscriptionSnapshot: TranscriptionSnapshot = {
+  active: false,
+  canRetry: false,
+  stage: "",
+  filePath: "",
+  fileName: "",
+  modelID: "",
+  failureSummary: "",
+};
+
 function getAppMethod<K extends keyof GoAppApi>(name: K): GoAppApi[K] {
   const method = window.go?.main?.App?.[name];
   if (typeof method !== "function") {
@@ -202,4 +230,16 @@ export function startModelDownload(modelID: ModelID) {
 
 export function deleteModel(modelID: ModelID) {
   return getAppMethod("DeleteModel")(modelID);
+}
+
+export function getTranscriptionSnapshot() {
+  return getAppMethod("GetTranscriptionSnapshot")();
+}
+
+export function startTranscription(request: StartTranscriptionRequest) {
+  return getAppMethod("StartTranscription")(request);
+}
+
+export function retryTranscription() {
+  return getAppMethod("RetryTranscription")();
 }
