@@ -100,6 +100,31 @@ type Service struct {
 	lastRun *runState
 }
 
+func (s *Service) GetLatestSubtitleDraft() (SubtitleDraft, error) {
+	s.mu.Lock()
+	run := s.lastRun
+	s.mu.Unlock()
+
+	if run == nil {
+		return SubtitleDraft{}, fmt.Errorf("no transcription draft is available yet")
+	}
+	if !fileExists(run.TimelinePath) {
+		return SubtitleDraft{}, fmt.Errorf("subtitle timeline is not available yet")
+	}
+
+	var timeline Timeline
+	if err := readJSON(run.TimelinePath, &timeline); err != nil {
+		return SubtitleDraft{}, err
+	}
+
+	return SubtitleDraft{
+		Text:              SerializeSRT(timeline.Subtitles),
+		SuggestedFilename: DraftFilenameForMedia(run.Request.MediaPath),
+		SourceFilePath:    run.Request.MediaPath,
+		SourceFileName:    filepath.Base(run.Request.MediaPath),
+	}, nil
+}
+
 func (f *Failure) Error() string {
 	if f.Detail != "" {
 		return f.Detail

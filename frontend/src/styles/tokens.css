@@ -14,6 +14,7 @@
   --accent-strong: #9fd5ff;
   --warning: #f1c77e;
   --danger: #ff9a9a;
+  --success: #82d1ad;
   --shadow-heavy: 0 28px 80px rgba(0, 0, 0, 0.35);
 }
 
@@ -33,6 +34,7 @@
   --accent-strong: #2f72e8;
   --warning: #a36800;
   --danger: #c84343;
+  --success: #0d7a53;
   --shadow-heavy: 0 26px 64px rgba(63, 94, 139, 0.18);
 }
 
@@ -266,10 +268,18 @@ button {
   color: var(--danger);
 }
 
+.inline-feedback-success {
+  color: var(--success);
+}
+
 .workspace-view {
   display: grid;
   gap: 18px;
   align-content: start;
+}
+
+.workspace-view-complete {
+  gap: 16px;
 }
 
 .processing-view {
@@ -349,6 +359,23 @@ button {
   align-items: center;
 }
 
+.workspace-header-complete,
+.workspace-success-card,
+.editor-card {
+  border-color: color-mix(in srgb, var(--success) 22%, var(--border-soft));
+}
+
+.workspace-success-card {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--success) 14%, transparent), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 38%),
+    var(--surface-2);
+}
+
+.workspace-success-card h2 {
+  margin: 6px 0 0;
+}
+
 .workspace-header h2,
 .selected-file-card h3,
 .drawer-header h2 {
@@ -400,6 +427,71 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.editor-card {
+  display: grid;
+  gap: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--success) 10%, transparent), transparent 20%),
+    var(--surface-2);
+}
+
+.editor-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.editor-card-status {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+}
+
+.editor-copy {
+  max-width: 760px;
+}
+
+.editor-field {
+  gap: 12px;
+}
+
+.editor-textarea {
+  min-height: 420px;
+  width: 100%;
+  resize: vertical;
+  padding: 20px 22px;
+  border-radius: 24px;
+  border: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 28%), var(--surface-1);
+  color: var(--text-primary);
+  font-family: "SFMono-Regular", "SF Mono", "IBM Plex Mono", "Fira Code", monospace;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.editor-textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 64%, transparent);
+  outline-offset: 3px;
+}
+
+.editor-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.editor-status-dirty {
+  border-color: color-mix(in srgb, var(--warning) 44%, var(--border-soft));
+  color: var(--warning);
+}
+
+.editor-status-saved {
+  border-color: color-mix(in srgb, var(--success) 38%, var(--border-soft));
+  color: var(--success);
 }
 
 .selected-file-intro {
@@ -720,6 +812,14 @@ button {
   .workspace-model-copy {
     text-align: left;
     max-width: none;
+  }
+
+  .editor-card-status {
+    justify-items: start;
+  }
+
+  .editor-textarea {
+    min-height: 340px;
   }
 
   .model-stat-grid,

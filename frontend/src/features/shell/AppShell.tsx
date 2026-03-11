@@ -1,4 +1,6 @@
 import type { DiagnosticsSnapshot, MediaMetadata, ModelStatus, Preferences } from "../../lib/backend";
+import { SubtitleEditorCard } from "../editor/SubtitleEditorCard";
+import type { SubtitleEditorSession } from "../processing/useTranscriptionSession";
 import { DetailsPanel } from "../diagnostics/DetailsPanel";
 import { MediaDropzone } from "../intake/MediaDropzone";
 import { SettingsDrawer } from "../preferences/SettingsDrawer";
@@ -21,13 +23,16 @@ type AppShellProps = {
   onOpenSettings: () => void;
   onPreferencesChange: (preferences: Preferences) => void | Promise<unknown>;
   onRetryTranscription: () => void | Promise<unknown>;
+  onSaveSubtitleDraft: () => void | Promise<unknown>;
   onStartTranscription: () => void | Promise<unknown>;
+  onSubtitleChange: (text: string) => void;
   preferences: Preferences;
   preferencesError: string | null;
   selectedFile: MediaMetadata | null;
   selectedModelStatus: ModelStatus | null;
   showDetails: boolean;
   showSettings: boolean;
+  subtitleEditor: SubtitleEditorSession;
   transcription: import("../../lib/backend").TranscriptionSnapshot;
 };
 
@@ -46,15 +51,20 @@ export function AppShell({
   onOpenSettings,
   onPreferencesChange,
   onRetryTranscription,
+  onSaveSubtitleDraft,
   onStartTranscription,
+  onSubtitleChange,
   preferences,
   preferencesError,
   selectedFile,
   selectedModelStatus,
   showDetails,
   showSettings,
+  subtitleEditor,
   transcription,
 }: AppShellProps) {
+  const hasSubtitleDraft = subtitleEditor.draft !== null;
+
   return (
     <div className="app-shell">
       <div className="ambient ambient-left" aria-hidden="true" />
@@ -79,10 +89,25 @@ export function AppShell({
         {transcription.active ? (
           <ProcessingView selectedModelStatus={selectedModelStatus} snapshot={transcription} />
         ) : hasSelection ? (
-          <section className="workspace-view" aria-label="workspace view">
+          <section
+            aria-label="workspace view"
+            className={`workspace-view ${hasSubtitleDraft ? "workspace-view-complete" : ""}`.trim()}
+          >
             {selectedFile ? (
               <>
+                {hasSubtitleDraft ? (
+                  <section className="workspace-card workspace-success-card" aria-label="completed editing state">
+                    <p className="section-label">Transcription complete</p>
+                    <h2>Subtitle draft ready for final edits.</h2>
+                    <p className="workspace-copy">
+                      ASRSubs has moved from processing into edit mode without leaving the current shell. File identity,
+                      diagnostics access, and save actions stay visible while the raw subtitle text is ready at the top
+                      of the document.
+                    </p>
+                  </section>
+                ) : null}
                 <WorkspaceHeader
+                  hasSubtitleDraft={hasSubtitleDraft}
                   file={selectedFile}
                   onBrowse={onBrowse}
                   onOpenDetails={onOpenDetails}
@@ -90,14 +115,27 @@ export function AppShell({
                   onStartTranscription={onStartTranscription}
                   selectedModelStatus={selectedModelStatus}
                 />
-                <SelectedFileSummary
-                  error={intakeError}
-                  file={selectedFile}
-                  onRetryTranscription={onRetryTranscription}
-                  transcriptionFailedStage={transcription.failedStage}
-                  transcriptionFailure={transcription.failureSummary}
-                  transcriptionRetryAvailable={transcription.canRetry}
-                />
+                {subtitleEditor.draft ? (
+                  <SubtitleEditorCard
+                    dirty={subtitleEditor.dirty}
+                    draft={subtitleEditor.draft}
+                    focusRequestId={subtitleEditor.focusRequestId}
+                    isSaving={subtitleEditor.isSaving}
+                    onChange={onSubtitleChange}
+                    onSave={onSaveSubtitleDraft}
+                    saveFeedback={subtitleEditor.saveFeedback}
+                    text={subtitleEditor.text}
+                  />
+                ) : (
+                  <SelectedFileSummary
+                    error={intakeError}
+                    file={selectedFile}
+                    onRetryTranscription={onRetryTranscription}
+                    transcriptionFailedStage={transcription.failedStage}
+                    transcriptionFailure={transcription.failureSummary}
+                    transcriptionRetryAvailable={transcription.canRetry}
+                  />
+                )}
               </>
             ) : null}
           </section>

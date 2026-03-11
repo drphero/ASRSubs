@@ -61,6 +61,10 @@ func TestSettingsPersistPreferences(t *testing.T) {
 		t.Fatalf("expected directory to persist, got %s", loaded.Directories.LastOpenDirectory)
 	}
 
+	if loaded.Directories.LastSaveDirectory != "/tmp/output" {
+		t.Fatalf("expected save directory to persist, got %s", loaded.Directories.LastSaveDirectory)
+	}
+
 	if loaded.Processing.AlignmentChunkMinutes != 4 {
 		t.Fatalf("expected chunk minutes to persist, got %d", loaded.Processing.AlignmentChunkMinutes)
 	}

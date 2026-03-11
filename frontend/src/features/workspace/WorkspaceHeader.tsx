@@ -2,6 +2,7 @@ import type { MediaMetadata, ModelStatus } from "../../lib/backend";
 
 type WorkspaceHeaderProps = {
   file: MediaMetadata;
+  hasSubtitleDraft: boolean;
   onBrowse: () => void;
   onOpenDetails: () => void;
   onOpenSettings: () => void;
@@ -11,6 +12,7 @@ type WorkspaceHeaderProps = {
 
 export function WorkspaceHeader({
   file,
+  hasSubtitleDraft,
   onBrowse,
   onOpenDetails,
   onOpenSettings,
@@ -18,14 +20,15 @@ export function WorkspaceHeader({
   selectedModelStatus,
 }: WorkspaceHeaderProps) {
   return (
-    <div className="workspace-header">
+    <div className={`workspace-header ${hasSubtitleDraft ? "workspace-header-complete" : ""}`.trim()}>
       <div className="workspace-header-copy">
-        <p className="section-label">Selected media</p>
+        <p className="section-label">{hasSubtitleDraft ? "Subtitle workspace" : "Selected media"}</p>
         <h2>{file.name}</h2>
         <div className="workspace-header-meta">
           <span className="workspace-meta-pill">{file.durationLabel}</span>
           <span className="workspace-meta-pill">{file.extension.replace(".", "").toUpperCase()}</span>
           <span className="workspace-meta-pill">{file.directory.split("/").filter(Boolean).pop() || file.directory}</span>
+          {hasSubtitleDraft ? <span className="workspace-meta-pill">Draft ready</span> : null}
         </div>
       </div>
       <div className="workspace-header-actions">
@@ -54,7 +57,7 @@ export function WorkspaceHeader({
           </div>
           <div className="workspace-primary-actions">
             <button className="primary-action" onClick={onStartTranscription} type="button">
-              Start Transcription
+              {hasSubtitleDraft ? "Run Again" : "Start Transcription"}
             </button>
             <button className="ghost-action" onClick={onBrowse} type="button">
               Replace File

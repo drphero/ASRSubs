@@ -152,6 +152,65 @@ func TestTranscriptionChunksLongMediaAndMergesOffsets(t *testing.T) {
 	}
 }
 
+func TestSRTSerializeUsesDeterministicOrderingAndFormatting(t *testing.T) {
+	text := SerializeSRT([]SubtitleSegment{
+		{
+			Index:   99,
+			StartMS: 0,
+			EndMS:   1750,
+			Lines:   []string{"hello world"},
+		},
+		{
+			Index:   3,
+			StartMS: 2000,
+			EndMS:   4005,
+			Lines:   []string{"second line", "wrapped"},
+		},
+	})
+
+	expected := "1\n00:00:00,000 --> 00:00:01,750\nhello world\n\n2\n00:00:02,000 --> 00:00:04,005\nsecond line\nwrapped\n"
+	if text != expected {
+		t.Fatalf("unexpected srt output:\n%s", text)
+	}
+}
+
+func TestValidateSRTRejectsMissingBlankLineAndBackwardsTime(t *testing.T) {
+	missingGap := "1\n00:00:00,000 --> 00:00:01,000\nhello\n2\n00:00:01,100 --> 00:00:02,000\nworld\n"
+	issue := ValidateSRT(missingGap)
+	if issue == nil || issue.Line != 4 {
+		t.Fatalf("expected blank-line issue on line 4, got %#v", issue)
+	}
+
+	backwards := "1\n00:00:02,000 --> 00:00:01,500\nhello\n"
+	issue = ValidateSRT(backwards)
+	if issue == nil || issue.Line != 2 {
+		t.Fatalf("expected backwards-time issue on line 2, got %#v", issue)
+	}
+}
+
+func TestSubtitleDraftLoadsSerializedTimelineFromLatestRun(t *testing.T) {
+	harness := newTestHarness(t, testServiceConfig{})
+
+	err := harness.service.Start(context.Background(), StartRequest{
+		MediaPath: filepath.Join(t.TempDir(), "clip.wav"),
+		ModelID:   "Qwen3-ASR-1.7B",
+	}, func(Snapshot) {})
+	if err != nil {
+		t.Fatalf("start transcription: %v", err)
+	}
+
+	draft, err := harness.service.GetLatestSubtitleDraft()
+	if err != nil {
+		t.Fatalf("get latest subtitle draft: %v", err)
+	}
+	if draft.SuggestedFilename != "clip.srt" {
+		t.Fatalf("expected clip.srt, got %s", draft.SuggestedFilename)
+	}
+	if !strings.Contains(draft.Text, "00:00:00,000 --> 00:00:01,240") {
+		t.Fatalf("expected serialized timestamps, got %s", draft.Text)
+	}
+}
+
 func TestTranscriptionChunkFailureRetriesOnceBeforeReturningFailure(t *testing.T) {
 	harness := newTestHarness(t, testServiceConfig{
 		duration:            8 * time.Minute,

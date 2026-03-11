@@ -81,6 +81,30 @@ export interface StartTranscriptionRequest {
   modelID: ModelID;
 }
 
+export interface SubtitleDraft {
+  text: string;
+  suggestedFilename: string;
+  sourceFilePath: string;
+  sourceFileName: string;
+}
+
+export interface SubtitleValidationIssue {
+  line: number;
+  message: string;
+}
+
+export interface SaveSubtitleDraftRequest {
+  text: string;
+  suggestedFilename: string;
+}
+
+export interface SaveSubtitleDraftResult {
+  status: "saved" | "canceled" | "invalid";
+  path?: string;
+  fileName?: string;
+  validationIssue?: SubtitleValidationIssue;
+}
+
 export type TranscriptionStage =
   | ""
   | "Preparing media"
@@ -104,12 +128,15 @@ export interface TranscriptionSnapshot {
 
 type GoAppApi = {
   DeleteModel: (modelID: ModelID) => Promise<ModelStatus>;
+  ConfirmDiscardSubtitleDraft: () => Promise<boolean>;
   GetModelState: (modelID: ModelID) => Promise<ModelStatus>;
   GetDiagnosticsSnapshot: () => Promise<DiagnosticsSnapshot>;
+  GetSubtitleDraft: () => Promise<SubtitleDraft>;
   GetTranscriptionSnapshot: () => Promise<TranscriptionSnapshot>;
   LoadPreferences: () => Promise<Preferences>;
   LoadModelSnapshot: () => Promise<ModelSnapshot>;
   RetryTranscription: () => Promise<TranscriptionSnapshot>;
+  SaveSubtitleDraft: (request: SaveSubtitleDraftRequest) => Promise<SaveSubtitleDraftResult>;
   SelectMediaFile: () => Promise<MediaMetadata | null>;
   StartModelDownload: (modelID: ModelID) => Promise<ModelStatus>;
   StartTranscription: (request: StartTranscriptionRequest) => Promise<TranscriptionSnapshot>;
@@ -252,10 +279,22 @@ export function getTranscriptionSnapshot() {
   return getAppMethod("GetTranscriptionSnapshot")();
 }
 
+export function getSubtitleDraft() {
+  return getAppMethod("GetSubtitleDraft")();
+}
+
 export function startTranscription(request: StartTranscriptionRequest) {
   return getAppMethod("StartTranscription")(request);
 }
 
 export function retryTranscription() {
   return getAppMethod("RetryTranscription")();
+}
+
+export function saveSubtitleDraft(request: SaveSubtitleDraftRequest) {
+  return getAppMethod("SaveSubtitleDraft")(request);
+}
+
+export function confirmDiscardSubtitleDraft() {
+  return getAppMethod("ConfirmDiscardSubtitleDraft")();
 }

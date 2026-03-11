@@ -115,13 +115,29 @@ export default function App() {
     }
   }
 
+  async function handleBrowse() {
+    if (!(await transcription.confirmDiscardIfDirty())) {
+      return;
+    }
+
+    await intake.browse();
+  }
+
+  async function handleStartTranscription() {
+    if (!(await transcription.confirmDiscardIfDirty())) {
+      return;
+    }
+
+    await transcription.start();
+  }
+
   return (
     <AppShell
       diagnostics={diagnostics}
       hasSelection={intake.hasSelection}
       intakeError={intake.error}
       modelStatuses={modelSnapshot.models}
-      onBrowse={intake.browse}
+      onBrowse={handleBrowse}
       onClearIntakeError={intake.clearError}
       onCloseDetails={() => setShowDetails(false)}
       onCloseSettings={() => setShowSettings(false)}
@@ -131,13 +147,16 @@ export default function App() {
       onOpenSettings={() => setShowSettings(true)}
       onPreferencesChange={preferences.replacePreferences}
       onRetryTranscription={transcription.retry}
-      onStartTranscription={transcription.start}
+      onSaveSubtitleDraft={transcription.saveEditor}
+      onStartTranscription={handleStartTranscription}
       preferences={preferences.preferences}
       preferencesError={preferences.error ?? modelError ?? transcription.error}
       selectedFile={intake.selectedFile}
       selectedModelStatus={selectedModelStatus}
       showDetails={showDetails}
       showSettings={showSettings}
+      subtitleEditor={transcription.editor}
+      onSubtitleChange={transcription.updateEditorText}
       transcription={transcription.snapshot}
     />
   );

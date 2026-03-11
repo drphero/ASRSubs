@@ -35,14 +35,16 @@ export function useFileIntake({ onAcceptedFile }: UseFileIntakeOptions = {}) {
     try {
       const metadata = await selectMediaFile();
       if (!metadata) {
-        return;
+        return null;
       }
 
       setSelectedFile(metadata);
       setError(null);
       onAcceptedFile?.(metadata);
+      return metadata;
     } catch (caught) {
       setError(resolveMessage(caught, "This file could not be opened."));
+      return null;
     }
   }
 

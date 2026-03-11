@@ -27,8 +27,8 @@ export function SelectedFileSummary({
           <h3>Local transcription is set up for this file.</h3>
         </div>
         <p className="workspace-copy">
-          The subtitle editor arrives in the next phase. For now, this workspace keeps the file facts,
-          model state, diagnostics, and retry flow in one place without repeating the same headline twice.
+          Run the local pipeline to generate a raw subtitle draft here in the workspace. This view keeps the
+          file facts, model state, diagnostics, and retry path in one place until the `.srt` draft is ready.
         </p>
       </div>
       <div className="summary-grid">
