@@ -40,9 +40,10 @@ export function SettingsDrawer({
         </div>
 
         <div className="drawer-group">
-          <div>
+          <div className="drawer-group-copy">
             <p className="section-label">Transcription models</p>
             <h3>Choose the local model that fits this machine.</h3>
+            <p className="workspace-copy">Everything runs locally. Download only the model you want to use.</p>
           </div>
           <div className="model-library">
             {modelStatuses.map((model) => {
@@ -68,11 +69,20 @@ export function SettingsDrawer({
                       {model.stateLabel}
                     </span>
                   </div>
-                  <p className="workspace-copy">{model.description}</p>
-                  <div className="model-facts">
-                    <span>{model.speedDescription}</span>
-                    <span>{model.qualityDescription}</span>
-                    <span>{model.systemRequirement}</span>
+                  <p className="model-card-copy">{model.description}</p>
+                  <div className="model-stat-grid">
+                    <div className="model-stat">
+                      <span>Speed</span>
+                      <strong>{model.speedDescription}</strong>
+                    </div>
+                    <div className="model-stat">
+                      <span>Quality</span>
+                      <strong>{model.qualityDescription}</strong>
+                    </div>
+                    <div className="model-stat model-stat-wide">
+                      <span>Footprint</span>
+                      <strong>{model.systemRequirement}</strong>
+                    </div>
                   </div>
                   <div className="model-card-actions">
                     <button

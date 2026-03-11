@@ -58,6 +58,7 @@ describe("App shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Browse Media" }));
 
     expect(await screen.findByLabelText("workspace view")).toBeInTheDocument();
-    expect(screen.getAllByText("0:12")).toHaveLength(2);
+    expect(screen.getByText("Local transcription is set up for this file.")).toBeInTheDocument();
+    expect(screen.getByText("1.2 KB")).toBeInTheDocument();
   });
 });

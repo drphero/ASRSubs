@@ -17,20 +17,34 @@ export function SelectedFileSummary({
 }: SelectedFileSummaryProps) {
   return (
     <section className="workspace-card selected-file-card" aria-label="selected file summary">
-      <div className="summary-grid">
+      <div className="selected-file-intro">
         <div>
-          <p className="section-label">File</p>
-          <h3>{file.name}</h3>
+          <p className="section-label">Ready to run</p>
+          <h3>Local transcription is set up for this file.</h3>
         </div>
-        <div>
-          <p className="section-label">Duration</p>
-          <h3>{file.durationLabel}</h3>
+        <p className="workspace-copy">
+          The subtitle editor arrives in the next phase. For now, this workspace keeps the file facts,
+          model state, diagnostics, and retry flow in one place without repeating the same headline twice.
+        </p>
+      </div>
+      <div className="summary-grid">
+        <div className="summary-stat">
+          <span>Source folder</span>
+          <strong>{file.directory}</strong>
+        </div>
+        <div className="summary-stat">
+          <span>Duration</span>
+          <strong>{file.durationLabel}</strong>
+        </div>
+        <div className="summary-stat">
+          <span>Format</span>
+          <strong>{file.extension.replace(".", "").toUpperCase()}</strong>
+        </div>
+        <div className="summary-stat">
+          <span>File size</span>
+          <strong>{formatFileSize(file.sizeBytes)}</strong>
         </div>
       </div>
-      <p className="workspace-copy">
-        The subtitle editor and save flow arrive in the next plans. This phase keeps the
-        chosen file, settings, and app activity visible in one place.
-      </p>
       {transcriptionFailure ? (
         <div className="transcription-inline-state">
           <p className="inline-feedback inline-feedback-error" role="alert">
@@ -50,4 +64,21 @@ export function SelectedFileSummary({
       ) : null}
     </section>
   );
+}
+
+function formatFileSize(sizeBytes: number) {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+
+  const units = ["KB", "MB", "GB"];
+  let value = sizeBytes / 1024;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
 }

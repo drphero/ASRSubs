@@ -19,10 +19,14 @@ export function WorkspaceHeader({
 }: WorkspaceHeaderProps) {
   return (
     <div className="workspace-header">
-      <div>
+      <div className="workspace-header-copy">
         <p className="section-label">Selected media</p>
         <h2>{file.name}</h2>
-        <p className="workspace-meta">{file.durationLabel}</p>
+        <div className="workspace-header-meta">
+          <span className="workspace-meta-pill">{file.durationLabel}</span>
+          <span className="workspace-meta-pill">{file.extension.replace(".", "").toUpperCase()}</span>
+          <span className="workspace-meta-pill">{file.directory.split("/").filter(Boolean).pop() || file.directory}</span>
+        </div>
       </div>
       <div className="workspace-header-actions">
         <div className="workspace-model">
@@ -39,18 +43,24 @@ export function WorkspaceHeader({
             {selectedModelStatus?.speedDescription ?? "Model state unavailable"}
           </p>
         </div>
-        <button className="ghost-action" onClick={onOpenDetails} type="button">
-          Details
-        </button>
-        <button className="ghost-action" onClick={onOpenSettings} type="button">
-          Settings
-        </button>
-        <button className="primary-action" onClick={onStartTranscription} type="button">
-          Start Transcription
-        </button>
-        <button className="ghost-action" onClick={onBrowse} type="button">
-          Replace File
-        </button>
+        <div className="workspace-action-cluster">
+          <div className="workspace-secondary-actions">
+            <button className="ghost-action" onClick={onOpenDetails} type="button">
+              Details
+            </button>
+            <button className="ghost-action" onClick={onOpenSettings} type="button">
+              Settings
+            </button>
+          </div>
+          <div className="workspace-primary-actions">
+            <button className="primary-action" onClick={onStartTranscription} type="button">
+              Start Transcription
+            </button>
+            <button className="ghost-action" onClick={onBrowse} type="button">
+              Replace File
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

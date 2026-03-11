@@ -346,7 +346,7 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
-  align-items: end;
+  align-items: center;
 }
 
 .workspace-header h2,
@@ -362,9 +362,29 @@ button {
   color: var(--text-secondary);
 }
 
+.workspace-header-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.workspace-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.workspace-meta-pill {
+  border-radius: 999px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-4);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
 .workspace-model {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   justify-items: end;
 }
 
@@ -379,7 +399,48 @@ button {
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: 14px;
+}
+
+.selected-file-intro {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-stat {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-3);
+}
+
+.summary-stat span {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.summary-stat strong {
+  font-size: 1rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.workspace-action-cluster {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+}
+
+.workspace-secondary-actions,
+.workspace-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
 .overlay-shell {
@@ -402,13 +463,14 @@ button {
   justify-self: end;
   height: 100%;
   width: min(440px, 92vw);
-  padding: 28px;
+  padding: 20px 20px 28px;
   display: grid;
   align-content: start;
-  gap: 22px;
+  gap: 14px;
   background: var(--surface-2-solid);
   border-left: 1px solid var(--border-soft);
   box-shadow: -20px 0 54px rgba(0, 0, 0, 0.14);
+  overflow-y: auto;
 }
 
 .details-panel {
@@ -420,15 +482,25 @@ button {
   justify-content: space-between;
   gap: 16px;
   align-items: start;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: 4px;
+  background: linear-gradient(180deg, var(--surface-2-solid) 82%, transparent);
 }
 
 .drawer-group {
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--border-soft);
-  border-radius: 24px;
+  border-radius: 20px;
   background: var(--surface-3);
+}
+
+.drawer-group-copy {
+  display: grid;
+  gap: 6px;
 }
 
 .field {
@@ -456,14 +528,14 @@ button {
 
 .model-library {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .model-card {
   display: grid;
-  gap: 14px;
-  padding: 18px;
-  border-radius: 22px;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
   border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.03);
 }
@@ -482,29 +554,59 @@ button {
 
 .model-card-header h3 {
   margin: 4px 0 0;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   letter-spacing: -0.04em;
 }
 
-.model-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+.model-card-copy {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
-.model-facts span {
-  border-radius: 999px;
-  padding: 8px 12px;
+.model-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.model-stat {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
   border: 1px solid var(--border-soft);
   background: var(--surface-4);
+}
+
+.model-stat span {
   color: var(--text-secondary);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.model-stat strong {
   font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.model-stat-wide {
+  grid-column: 1 / -1;
 }
 
 .model-card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.model-card-actions .primary-action,
+.model-card-actions .ghost-action {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.92rem;
 }
 
 .status-summary {
@@ -588,6 +690,12 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .workspace-secondary-actions,
+  .workspace-primary-actions,
+  .workspace-header-meta {
+    justify-content: flex-start;
+  }
+
   .processing-card {
     padding: 28px;
     border-radius: 28px;
@@ -605,9 +713,18 @@ button {
     justify-items: start;
   }
 
+  .workspace-action-cluster {
+    justify-items: start;
+  }
+
   .workspace-model-copy {
     text-align: left;
     max-width: none;
+  }
+
+  .model-stat-grid,
+  .model-card-actions {
+    grid-template-columns: 1fr;
   }
 
   .model-card-header {
