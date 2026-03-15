@@ -30,9 +30,15 @@ Unicode true
 ####
 ## !define REQUEST_EXECUTION_LEVEL "admin"            # Default "admin"  see also https://nsis.sourceforge.io/Docs/Chapter4.html
 ####
+## !define ASRSUBS_STAGE_DIR     "..\..\bin\ASRSubs-windows-portable"
+####
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
+
+!ifndef ASRSUBS_STAGE_DIR
+!define ASRSUBS_STAGE_DIR "..\..\bin\ASRSubs-windows-portable"
+!endif
 
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
@@ -87,6 +93,16 @@ Section
     SetOutPath $INSTDIR
 
     !insertmacro wails.files
+
+    !if /FileExists "${ASRSUBS_STAGE_DIR}\runtime\*"
+        SetOutPath "$INSTDIR\runtime"
+        File /r "${ASRSUBS_STAGE_DIR}\runtime\*"
+    !endif
+
+    !if /FileExists "${ASRSUBS_STAGE_DIR}\bin\*"
+        SetOutPath "$INSTDIR\bin"
+        File /r "${ASRSUBS_STAGE_DIR}\bin\*"
+    !endif
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
