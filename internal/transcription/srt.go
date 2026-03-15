@@ -10,6 +10,8 @@ import (
 
 var srtTimeRangePattern = regexp.MustCompile(`^(\d{2}):(\d{2}):(\d{2}),(\d{3}) --> (\d{2}):(\d{2}):(\d{2}),(\d{3})$`)
 
+const minRepairedSRTDurationMS = 50
+
 type SubtitleDraft struct {
 	Text              string `json:"text"`
 	SuggestedFilename string `json:"suggestedFilename"`
@@ -37,8 +39,10 @@ func SerializeSRT(subtitles []SubtitleSegment) string {
 		return ""
 	}
 
+	normalized := normalizeSRTSubtitles(subtitles)
+
 	var builder strings.Builder
-	for index, subtitle := range subtitles {
+	for index, subtitle := range normalized {
 		if index > 0 {
 			builder.WriteString("\n\n")
 		}
@@ -68,6 +72,34 @@ func SerializeSRT(subtitles []SubtitleSegment) string {
 
 	builder.WriteByte('\n')
 	return builder.String()
+}
+
+func normalizeSRTSubtitles(subtitles []SubtitleSegment) []SubtitleSegment {
+	normalized := make([]SubtitleSegment, 0, len(subtitles))
+	previousEndMS := 0
+
+	for index, subtitle := range subtitles {
+		startMS := subtitle.StartMS
+		if startMS < 0 {
+			startMS = 0
+		}
+		if index > 0 && startMS < previousEndMS {
+			startMS = previousEndMS
+		}
+
+		durationMS := subtitle.EndMS - subtitle.StartMS
+		if durationMS <= 0 {
+			durationMS = minRepairedSRTDurationMS
+		}
+
+		normalizedSubtitle := subtitle
+		normalizedSubtitle.StartMS = startMS
+		normalizedSubtitle.EndMS = startMS + durationMS
+		normalized = append(normalized, normalizedSubtitle)
+		previousEndMS = normalizedSubtitle.EndMS
+	}
+
+	return normalized
 }
 
 func formatSRTTimestamp(milliseconds int) string {

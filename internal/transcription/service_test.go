@@ -175,6 +175,66 @@ func TestSRTSerializeUsesDeterministicOrderingAndFormatting(t *testing.T) {
 	}
 }
 
+func TestSRTSerializeRepairsZeroDurationCue(t *testing.T) {
+	text := SerializeSRT([]SubtitleSegment{
+		{
+			StartMS: 1000,
+			EndMS:   1000,
+			Lines:   []string{"hello"},
+		},
+	})
+
+	expected := "1\n00:00:01,000 --> 00:00:01,050\nhello\n"
+	if text != expected {
+		t.Fatalf("unexpected repaired srt output:\n%s", text)
+	}
+}
+
+func TestSRTSerializeRepairsBackwardsCueAndShiftsFollowingCue(t *testing.T) {
+	text := SerializeSRT([]SubtitleSegment{
+		{
+			StartMS: 1000,
+			EndMS:   900,
+			Lines:   []string{"alpha"},
+		},
+		{
+			StartMS: 1030,
+			EndMS:   1130,
+			Lines:   []string{"beta"},
+		},
+	})
+
+	expected := "1\n00:00:01,000 --> 00:00:01,050\nalpha\n\n2\n00:00:01,050 --> 00:00:01,150\nbeta\n"
+	if text != expected {
+		t.Fatalf("unexpected repaired and shifted srt output:\n%s", text)
+	}
+}
+
+func TestSRTSerializeRepairsConsecutiveZeroDurationCues(t *testing.T) {
+	text := SerializeSRT([]SubtitleSegment{
+		{
+			StartMS: 1000,
+			EndMS:   1000,
+			Lines:   []string{"alpha"},
+		},
+		{
+			StartMS: 1025,
+			EndMS:   1025,
+			Lines:   []string{"beta"},
+		},
+		{
+			StartMS: 1030,
+			EndMS:   1030,
+			Lines:   []string{"gamma"},
+		},
+	})
+
+	expected := "1\n00:00:01,000 --> 00:00:01,050\nalpha\n\n2\n00:00:01,050 --> 00:00:01,100\nbeta\n\n3\n00:00:01,100 --> 00:00:01,150\ngamma\n"
+	if text != expected {
+		t.Fatalf("unexpected repaired consecutive srt output:\n%s", text)
+	}
+}
+
 func TestValidateSRTRejectsMissingBlankLineAndBackwardsTime(t *testing.T) {
 	missingGap := "1\n00:00:00,000 --> 00:00:01,000\nhello\n2\n00:00:01,100 --> 00:00:02,000\nworld\n"
 	issue := ValidateSRT(missingGap)
@@ -209,6 +269,52 @@ func TestSubtitleDraftLoadsSerializedTimelineFromLatestRun(t *testing.T) {
 	}
 	if !strings.Contains(draft.Text, "00:00:00,000 --> 00:00:01,240") {
 		t.Fatalf("expected serialized timestamps, got %s", draft.Text)
+	}
+}
+
+func TestSubtitleDraftRepairsInvalidTimelineCueTimings(t *testing.T) {
+	harness := newTestHarness(t, testServiceConfig{})
+
+	err := harness.service.Start(context.Background(), StartRequest{
+		MediaPath: filepath.Join(t.TempDir(), "clip.wav"),
+		ModelID:   "Qwen3-ASR-1.7B",
+	}, func(Snapshot) {})
+	if err != nil {
+		t.Fatalf("start transcription: %v", err)
+	}
+
+	var timeline Timeline
+	if err := readJSON(harness.service.lastRun.TimelinePath, &timeline); err != nil {
+		t.Fatalf("read timeline: %v", err)
+	}
+
+	timeline.Subtitles = []SubtitleSegment{
+		{
+			StartMS: 1000,
+			EndMS:   1000,
+			Lines:   []string{"alpha"},
+		},
+		{
+			StartMS: 1020,
+			EndMS:   1020,
+			Lines:   []string{"beta"},
+		},
+	}
+	if err := writeJSON(harness.service.lastRun.TimelinePath, timeline); err != nil {
+		t.Fatalf("write timeline: %v", err)
+	}
+
+	draft, err := harness.service.GetLatestSubtitleDraft()
+	if err != nil {
+		t.Fatalf("get latest subtitle draft: %v", err)
+	}
+	if issue := ValidateSRT(draft.Text); issue != nil {
+		t.Fatalf("expected repaired draft to validate, got %#v\n%s", issue, draft.Text)
+	}
+
+	expected := "1\n00:00:01,000 --> 00:00:01,050\nalpha\n\n2\n00:00:01,050 --> 00:00:01,100\nbeta\n"
+	if draft.Text != expected {
+		t.Fatalf("unexpected repaired draft text:\n%s", draft.Text)
 	}
 }
 
