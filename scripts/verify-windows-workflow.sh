@@ -33,6 +33,13 @@ checks=(
   "go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0"
   "wails build -clean -platform windows/amd64 -nsis -webview2 embed"
   "./scripts/stage-runtime.sh windows/amd64"
+  "/c/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/bin/ffmpeg.exe"
+  "/c/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/bin/ffprobe.exe"
+  "Smoke-test staged ffmpeg tools"
+  "Resolve-Path \"build/bin/ASRSubs-windows-portable/bin/ffmpeg.exe\""
+  "Resolve-Path \"build/bin/ASRSubs-windows-portable/bin/ffprobe.exe\""
+  "throw \"staged ffmpeg.exe failed to execute\""
+  "throw \"staged ffprobe.exe failed to execute\""
   "Get-Command makensis -ErrorAction SilentlyContinue"
   "ProgramData\\chocolatey\\bin\\makensis.exe"
   "throw \"makensis executable not found after NSIS install\""
@@ -54,6 +61,15 @@ checks=(
 for needle in "${checks[@]}"; do
   if ! grep -Fq "${needle}" "${workflow_path}"; then
     printf 'Workflow check failed: missing "%s"\n' "${needle}" >&2
+    exit 1
+  fi
+done
+
+for forbidden in \
+  "/c/ProgramData/chocolatey/bin/ffmpeg.exe" \
+  "/c/ProgramData/chocolatey/bin/ffprobe.exe"; do
+  if grep -Fq "${forbidden}" "${workflow_path}"; then
+    printf 'Workflow check failed: unexpected Chocolatey shim path "%s"\n' "${forbidden}" >&2
     exit 1
   fi
 done

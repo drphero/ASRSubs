@@ -37,24 +37,59 @@ resolve_binary_source() {
   local default_name="$2"
   local candidate="${!env_var:-}"
   if [[ -n "${candidate}" && -f "${candidate}" ]]; then
-    printf '%s\n' "${candidate}"
+    resolve_binary_candidate "${candidate}" "${default_name}" "${env_var}"
     return 0
   fi
 
   local packaged_candidate="${repo_root}/packaging/tools/${platform_family}/${default_name}"
   if [[ -f "${packaged_candidate}" ]]; then
-    printf '%s\n' "${packaged_candidate}"
+    resolve_binary_candidate "${packaged_candidate}" "${default_name}" "${env_var}"
     return 0
   fi
 
   local command_name="${default_name%.*}"
   if command -v "${command_name}" >/dev/null 2>&1; then
-    command -v "${command_name}"
+    resolve_binary_candidate "$(command -v "${command_name}")" "${default_name}" "${env_var}"
     return 0
   fi
 
   printf 'Required binary %s is unavailable. Set %s or add it under packaging/tools/%s/.\n' "${default_name}" "${env_var}" "${platform_family}" >&2
   exit 1
+}
+
+resolve_binary_candidate() {
+  local candidate="$1"
+  local default_name="$2"
+  local env_var="$3"
+
+  if [[ "${platform_family}" != "windows" ]]; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+
+  local candidate_dir
+  candidate_dir="$(dirname "${candidate}")"
+  local candidate_base
+  candidate_base="$(basename "${candidate_dir}")"
+  local candidate_parent
+  candidate_parent="$(basename "$(dirname "${candidate_dir}")")"
+  local candidate_lower
+  candidate_lower="$(printf '%s' "${candidate}" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ "${candidate_lower}" == *"/programdata/chocolatey/bin/"* ]] || [[ "${candidate_base}" == "bin" && "${candidate_parent}" == "chocolatey" ]]; then
+    local chocolatey_root
+    chocolatey_root="$(dirname "${candidate_dir}")"
+    local payload_candidate="${chocolatey_root}/lib/ffmpeg/tools/ffmpeg/bin/${default_name}"
+    if [[ -f "${payload_candidate}" ]]; then
+      printf '%s\n' "${payload_candidate}"
+      return 0
+    fi
+
+    printf 'Chocolatey shim detected at %s via %s, but the real payload is missing at %s\n' "${candidate}" "${env_var}" "${payload_candidate}" >&2
+    exit 1
+  fi
+
+  printf '%s\n' "${candidate}"
 }
 
 stage_root_for_target() {

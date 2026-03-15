@@ -74,13 +74,29 @@ jobs:
         shell: bash
         env:
           ASRSUBS_PYTHON_STANDALONE: ${{ env.pythonLocation }}
-          ASRSUBS_FFMPEG_PATH: /c/ProgramData/chocolatey/bin/ffmpeg.exe
-          ASRSUBS_FFPROBE_PATH: /c/ProgramData/chocolatey/bin/ffprobe.exe
+          ASRSUBS_FFMPEG_PATH: /c/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/bin/ffmpeg.exe
+          ASRSUBS_FFPROBE_PATH: /c/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/bin/ffprobe.exe
         run: ./scripts/stage-runtime.sh windows/amd64 build/bin/ASRSubs-windows-portable/ASRSubs.exe
 
       - name: Verify staged layout
         shell: bash
         run: ./scripts/verify-windows-package-layout.sh
+
+      - name: Smoke-test staged ffmpeg tools
+        shell: pwsh
+        run: |
+          $ffmpeg = (Resolve-Path "build/bin/ASRSubs-windows-portable/bin/ffmpeg.exe").Path
+          $ffprobe = (Resolve-Path "build/bin/ASRSubs-windows-portable/bin/ffprobe.exe").Path
+
+          & $ffmpeg -version
+          if ($LASTEXITCODE -ne 0) {
+            throw "staged ffmpeg.exe failed to execute"
+          }
+
+          & $ffprobe -version
+          if ($LASTEXITCODE -ne 0) {
+            throw "staged ffprobe.exe failed to execute"
+          }
 
       - name: Build portable archive
         shell: pwsh
