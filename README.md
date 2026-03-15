@@ -44,8 +44,10 @@ Unsigned macOS builds will trigger a Gatekeeper warning on first open. For local
 
 The repository publishes two Windows deliverables:
 
-- `ASRSubs-windows-portable.zip`: the app executable plus bundled runtime and `ffmpeg` payload
-- `ASRSubs-amd64-installer.exe`: the NSIS installer with the same staged runtime tree
+- `ASRSubs-<version>-windows-amd64-portable.zip`: the app executable plus bundled runtime and `ffmpeg` payload
+- `ASRSubs-<version>-windows-amd64-installer.exe`: the NSIS installer with the same staged runtime tree
+
+The workflow derives `<version>` from `info.productVersion` in `wails.json`, so the artifact filenames match the embedded app version metadata.
 
 The GitHub Actions workflow lives at `.github/workflows/build-windows.yml`. It:
 

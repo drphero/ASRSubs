@@ -22,6 +22,10 @@ checks=(
   "actions/setup-go@v6"
   "actions/setup-node@v6"
   "actions/setup-python@v6"
+  "Get-Content \"wails.json\" | ConvertFrom-Json"
+  "ASRSUBS_VERSION="
+  "ASRSUBS_PORTABLE_ZIP=ASRSubs-\$version-windows-amd64-portable.zip"
+  "ASRSUBS_INSTALLER_EXE=ASRSubs-\$version-windows-amd64-installer.exe"
   "go-version-file: go.mod"
   "cache-dependency-path: frontend/package-lock.json"
   "choco install ffmpeg --version=7.1.1 -y"
@@ -29,19 +33,23 @@ checks=(
   "wails build -clean -platform windows/amd64 -nsis -webview2 embed"
   "./scripts/stage-runtime.sh windows/amd64"
   "makensis"
-  "ASRSubs-windows-portable.zip"
-  "ASRSubs-amd64-installer.exe"
+  "build/bin/\$env:ASRSUBS_PORTABLE_ZIP"
+  "Rename-Item \"build/bin/ASRSubs-amd64-installer.exe\" \"build/bin/\$env:ASRSUBS_INSTALLER_EXE\" -Force"
+  "name: \${{ env.ASRSUBS_PORTABLE_ZIP }}"
+  "path: build/bin/\${{ env.ASRSUBS_PORTABLE_ZIP }}"
+  "name: \${{ env.ASRSUBS_INSTALLER_EXE }}"
+  "path: build/bin/\${{ env.ASRSUBS_INSTALLER_EXE }}"
   "actions/upload-artifact@v6"
 )
 
 for needle in "${checks[@]}"; do
-  if ! grep -q "${needle}" "${workflow_path}"; then
+  if ! grep -Fq "${needle}" "${workflow_path}"; then
     printf 'Workflow check failed: missing "%s"\n' "${needle}" >&2
     exit 1
   fi
 done
 
-upload_count="$(grep -c 'actions/upload-artifact@v6' "${workflow_path}")"
+upload_count="$(grep -Fc 'actions/upload-artifact@v6' "${workflow_path}")"
 if [[ "${upload_count}" -lt 2 ]]; then
   printf 'Workflow check failed: expected two artifact uploads, found %s\n' "${upload_count}" >&2
   exit 1
@@ -51,14 +59,15 @@ readme_checks=(
   "macOS"
   "Windows"
   "./scripts/build-macos-package.sh"
-  "ASRSubs-windows-portable.zip"
-  "ASRSubs-amd64-installer.exe"
+  "ASRSubs-<version>-windows-amd64-portable.zip"
+  "ASRSubs-<version>-windows-amd64-installer.exe"
+  "wails.json"
   "Gatekeeper"
   "SmartScreen"
 )
 
 for needle in "${readme_checks[@]}"; do
-  if ! grep -q "${needle}" "${readme_path}"; then
+  if ! grep -Fq "${needle}" "${readme_path}"; then
     printf 'README check failed: missing "%s"\n' "${needle}" >&2
     exit 1
   fi
