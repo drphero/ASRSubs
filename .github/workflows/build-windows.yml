@@ -122,7 +122,7 @@ jobs:
             Pop-Location
           }
 
-          Rename-Item "build/bin/ASRSubs-amd64-installer.exe" "build/bin/$env:ASRSUBS_INSTALLER_EXE" -Force
+          Move-Item "build/bin/ASRSubs-amd64-installer.exe" "build/bin/$env:ASRSUBS_INSTALLER_EXE" -Force
 
       - name: Verify workflow contract
         shell: bash

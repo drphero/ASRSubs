@@ -43,7 +43,7 @@ checks=(
   "\"/DASRSUBS_STAGE_DIR=\$stageDir\""
   "\"project.nsi\""
   "build/bin/\$env:ASRSUBS_PORTABLE_ZIP"
-  "Rename-Item \"build/bin/ASRSubs-amd64-installer.exe\" \"build/bin/\$env:ASRSUBS_INSTALLER_EXE\" -Force"
+  "Move-Item \"build/bin/ASRSubs-amd64-installer.exe\" \"build/bin/\$env:ASRSUBS_INSTALLER_EXE\" -Force"
   "name: \${{ env.ASRSUBS_PORTABLE_ZIP }}"
   "path: build/bin/\${{ env.ASRSUBS_PORTABLE_ZIP }}"
   "name: \${{ env.ASRSUBS_INSTALLER_EXE }}"
