@@ -71,3 +71,44 @@ func TestRuntimeBootstrapDoesNotFallbackToSystemPython(t *testing.T) {
 		t.Fatalf("expected managed runtime availability error, got %v", err)
 	}
 }
+
+func TestRuntimeStatusUsesBundledResourcesBeforeRepoPaths(t *testing.T) {
+	rootDir := t.TempDir()
+	resourceRoot := t.TempDir()
+	runtimeRoot := filepath.Join(resourceRoot, "runtime")
+	if err := os.MkdirAll(filepath.Join(runtimeRoot, "python", "bin"), 0o755); err != nil {
+		t.Fatalf("create bundled runtime: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(runtimeRoot, "python", "bin", "python3"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write bundled python: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(runtimeRoot, "worker.py"), []byte("print('worker')\n"), 0o644); err != nil {
+		t.Fatalf("write bundled worker: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(runtimeRoot, "requirements.txt"), []byte("qwen-asr==0.0.6\n"), 0o644); err != nil {
+		t.Fatalf("write bundled requirements: %v", err)
+	}
+
+	t.Setenv("ASRSUBS_RESOURCE_ROOT", resourceRoot)
+
+	service, err := newService(filepath.Join(rootDir, "managed"))
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	status := service.Status()
+	if status.State != "missing" {
+		t.Fatalf("expected missing state before preparation, got %s", status.State)
+	}
+	if status.WorkerPath != filepath.Join(runtimeRoot, "worker.py") {
+		t.Fatalf("expected bundled worker path, got %s", status.WorkerPath)
+	}
+
+	source, err := service.resolveManagedRuntimeSource()
+	if err != nil {
+		t.Fatalf("resolve managed runtime source: %v", err)
+	}
+	if source != filepath.Join(runtimeRoot, "python") {
+		t.Fatalf("expected bundled runtime source, got %s", source)
+	}
+}

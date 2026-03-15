@@ -46,6 +46,35 @@ func TestEnsureRuntimeReadyRunsManagedSmokePath(t *testing.T) {
 	}
 }
 
+func TestGetRuntimeReadinessReportsMissingBeforePreparation(t *testing.T) {
+	rootDir := t.TempDir()
+	requirementsPath := filepath.Join(rootDir, "requirements.txt")
+	if err := os.WriteFile(requirementsPath, []byte("qwen-asr==0.0.6\n"), 0o644); err != nil {
+		t.Fatalf("write requirements: %v", err)
+	}
+
+	app := &App{}
+	app.runtime = asrruntime.NewServiceAtRoot(
+		filepath.Join(rootDir, "managed"),
+		asrruntime.WithManagedRuntimeSource(writeFakeManagedRuntimeSource(t)),
+		asrruntime.WithRequirementsPath(requirementsPath),
+		asrruntime.WithWorkerScriptPath(filepath.Join(rootDir, "worker.py")),
+	)
+
+	if err := os.WriteFile(filepath.Join(rootDir, "worker.py"), []byte("print('ok')\n"), 0o644); err != nil {
+		t.Fatalf("write worker: %v", err)
+	}
+
+	readiness, err := app.GetRuntimeReadiness()
+	if err != nil {
+		t.Fatalf("get runtime readiness: %v", err)
+	}
+
+	if readiness.State != "missing" {
+		t.Fatalf("expected missing state, got %s", readiness.State)
+	}
+}
+
 func writeFakeManagedRuntimeSource(t *testing.T) string {
 	t.Helper()
 

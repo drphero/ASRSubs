@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"sync"
 	"time"
@@ -657,9 +658,14 @@ func fileExists(path string) bool {
 }
 
 func (s *Service) defaultPrepareMedia(ctx context.Context, inputPath string, outputPath string) error {
+	ffmpegPath, err := s.resolveBinaryPath("ffmpeg")
+	if err != nil {
+		return err
+	}
+
 	cmd := exec.CommandContext(
 		ctx,
-		"ffmpeg",
+		ffmpegPath,
 		"-y",
 		"-i",
 		inputPath,
@@ -684,9 +690,14 @@ func (s *Service) defaultPrepareMedia(ctx context.Context, inputPath string, out
 }
 
 func (s *Service) defaultProbeDuration(ctx context.Context, inputPath string) (time.Duration, error) {
+	ffprobePath, err := s.resolveBinaryPath("ffprobe")
+	if err != nil {
+		return 0, err
+	}
+
 	cmd := exec.CommandContext(
 		ctx,
-		"ffprobe",
+		ffprobePath,
 		"-v",
 		"error",
 		"-show_entries",
@@ -703,9 +714,14 @@ func (s *Service) defaultProbeDuration(ctx context.Context, inputPath string) (t
 }
 
 func (s *Service) defaultSegmentMedia(ctx context.Context, inputPath string, outputPath string, start time.Duration, duration time.Duration) error {
+	ffmpegPath, err := s.resolveBinaryPath("ffmpeg")
+	if err != nil {
+		return err
+	}
+
 	cmd := exec.CommandContext(
 		ctx,
-		"ffmpeg",
+		ffmpegPath,
 		"-y",
 		"-i",
 		inputPath,
@@ -730,4 +746,38 @@ func (s *Service) defaultSegmentMedia(ctx context.Context, inputPath string, out
 
 func (s *Service) defaultRunWorker(ctx context.Context, request asrruntime.WorkerRequest) (asrruntime.WorkerResponse, error) {
 	return s.runtime.RunWorker(ctx, request)
+}
+
+func (s *Service) resolveBinaryPath(name string) (string, error) {
+	envKey := "ASRSUBS_FFMPEG_PATH"
+	if name == "ffprobe" {
+		envKey = "ASRSUBS_FFPROBE_PATH"
+	}
+
+	if candidate := strings.TrimSpace(os.Getenv(envKey)); candidate != "" {
+		if fileExists(candidate) {
+			return candidate, nil
+		}
+		return "", fmt.Errorf("%s is set but points to a missing file: %s", envKey, candidate)
+	}
+
+	bundledName := name
+	if goruntime.GOOS == "windows" {
+		bundledName += ".exe"
+	}
+
+	if bundled := asrruntime.ResolveBundledResourcePath("bin", bundledName); bundled != "" {
+		return bundled, nil
+	}
+
+	resolved, err := exec.LookPath(name)
+	if err == nil {
+		return resolved, nil
+	}
+
+	return "", fmt.Errorf(
+		"%s is unavailable: package it under bin/%s in the app resources or install it on PATH",
+		name,
+		bundledName,
+	)
 }

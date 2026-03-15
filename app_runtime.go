@@ -44,6 +44,15 @@ func (a *App) EnsureRuntimeReady() (RuntimeReadiness, error) {
 	return runtimeReadinessFromStatus(status), nil
 }
 
+func (a *App) GetRuntimeReadiness() (RuntimeReadiness, error) {
+	service, err := a.requireRuntimeService()
+	if err != nil {
+		return RuntimeReadiness{}, err
+	}
+
+	return runtimeReadinessFromStatus(service.Status()), nil
+}
+
 func (a *App) requireRuntimeService() (*asrruntime.Service, error) {
 	if a.runtime == nil {
 		return nil, fmt.Errorf("runtime service is not ready")

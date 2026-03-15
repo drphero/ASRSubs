@@ -94,24 +94,27 @@ func NewServiceAtRoot(rootDir string, options ...Option) *Service {
 }
 
 func newService(rootDir string, options ...Option) (*Service, error) {
-	workerPath, err := filepath.Abs(filepath.Join("internal", "runtime", "worker.py"))
-	if err != nil {
-		return nil, err
-	}
-
-	requirementsPath, err := filepath.Abs(filepath.Join("internal", "runtime", "requirements.txt"))
-	if err != nil {
-		return nil, err
-	}
-
 	cfg := serviceConfig{
-		rootDir:          rootDir,
-		requirementsPath: requirementsPath,
-		workerScriptPath: workerPath,
+		rootDir: rootDir,
 	}
 
 	for _, option := range options {
 		option(&cfg)
+	}
+
+	var err error
+	if strings.TrimSpace(cfg.workerScriptPath) == "" {
+		cfg.workerScriptPath, err = resolveRuntimeSupportPath("worker.py")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if strings.TrimSpace(cfg.requirementsPath) == "" {
+		cfg.requirementsPath, err = resolveRuntimeSupportPath("requirements.txt")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Service{
@@ -194,6 +197,18 @@ func (s *Service) Status() Status {
 		return s.readyStatus("Managed runtime executable is present.")
 	}
 
+	if !fileExists(s.workerScriptPath) {
+		return s.failedStatus(fmt.Sprintf("Managed runtime worker script is missing at %s.", s.workerScriptPath))
+	}
+
+	if !fileExists(s.requirementsPath) {
+		return s.failedStatus(fmt.Sprintf("Managed runtime requirements are missing at %s.", s.requirementsPath))
+	}
+
+	if _, err := s.resolveManagedRuntimeSource(); err != nil {
+		return s.failedStatus(err.Error())
+	}
+
 	return Status{
 		State:      "missing",
 		RootDir:    s.rootDir,
@@ -234,6 +249,7 @@ func (s *Service) resolveManagedRuntimeSource() (string, error) {
 
 	candidates := []string{
 		os.Getenv("ASRSUBS_PYTHON_STANDALONE"),
+		ResolveBundledResourcePath("runtime", "python"),
 		filepath.Join("build", "runtime", "python"),
 		filepath.Join("resources", "python"),
 	}
@@ -250,9 +266,70 @@ func (s *Service) resolveManagedRuntimeSource() (string, error) {
 	}
 
 	return "", fmt.Errorf(
-		"%w: package a standalone runtime under build/runtime/python or set ASRSUBS_PYTHON_STANDALONE for local development",
+		"%w: package a standalone runtime under runtime/python in the app resources, build/runtime/python in the repo, or set ASRSUBS_PYTHON_STANDALONE for local development",
 		ErrManagedRuntimeUnavailable,
 	)
+}
+
+func resolveRuntimeSupportPath(name string) (string, error) {
+	if bundled := ResolveBundledResourcePath("runtime", name); bundled != "" {
+		return bundled, nil
+	}
+
+	return filepath.Abs(filepath.Join("internal", "runtime", name))
+}
+
+func ResolveBundledResourcePath(parts ...string) string {
+	for _, root := range bundledResourceRoots() {
+		if strings.TrimSpace(root) == "" {
+			continue
+		}
+
+		candidate := filepath.Join(append([]string{root}, parts...)...)
+		if pathExists(candidate) {
+			return candidate
+		}
+	}
+
+	return ""
+}
+
+func bundledResourceRoots() []string {
+	roots := []string{}
+	added := map[string]struct{}{}
+
+	add := func(path string) {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			return
+		}
+
+		resolved, err := filepath.Abs(path)
+		if err != nil {
+			return
+		}
+		if _, exists := added[resolved]; exists {
+			return
+		}
+
+		added[resolved] = struct{}{}
+		roots = append(roots, resolved)
+	}
+
+	add(os.Getenv("ASRSUBS_RESOURCE_ROOT"))
+
+	executablePath, err := os.Executable()
+	if err == nil {
+		executableDir := filepath.Dir(executablePath)
+		add(executableDir)
+		add(filepath.Join(executableDir, "resources"))
+
+		if strings.EqualFold(filepath.Base(executableDir), "MacOS") {
+			add(filepath.Join(executableDir, "..", "Resources"))
+		}
+	}
+
+	return roots
 }
 
 func (s *Service) loadBootstrapState() (*bootstrapState, error) {
@@ -367,6 +444,11 @@ func validateManagedRuntimeSource(path string) (string, error) {
 	}
 
 	return resolved, nil
+}
+
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func copyTree(source string, destination string) error {

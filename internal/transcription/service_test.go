@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"testing"
 	"time"
@@ -234,6 +235,60 @@ func TestTranscriptionChunkFailureRetriesOnceBeforeReturningFailure(t *testing.T
 	}
 	if harness.tracker.calls["align"] != 3 {
 		t.Fatalf("expected one retry for failing chunk, got %d align calls", harness.tracker.calls["align"])
+	}
+}
+
+func TestResolveBinaryPathPrefersBundledResources(t *testing.T) {
+	resourceRoot := t.TempDir()
+	binDir := filepath.Join(resourceRoot, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("create bundled bin dir: %v", err)
+	}
+
+	ffmpegName := "ffmpeg"
+	if goruntime.GOOS == "windows" {
+		ffmpegName += ".exe"
+	}
+
+	bundledPath := filepath.Join(binDir, ffmpegName)
+	if err := os.WriteFile(bundledPath, []byte("stub"), 0o755); err != nil {
+		t.Fatalf("write bundled ffmpeg: %v", err)
+	}
+
+	t.Setenv("ASRSUBS_RESOURCE_ROOT", resourceRoot)
+
+	service := &Service{}
+	resolved, err := service.resolveBinaryPath("ffmpeg")
+	if err != nil {
+		t.Fatalf("resolve binary path: %v", err)
+	}
+	if resolved != bundledPath {
+		t.Fatalf("expected bundled ffmpeg path, got %s", resolved)
+	}
+}
+
+func TestResolveBinaryPathFallsBackToPath(t *testing.T) {
+	binDir := t.TempDir()
+	ffprobeName := "ffprobe"
+	if goruntime.GOOS == "windows" {
+		ffprobeName += ".exe"
+	}
+
+	ffprobePath := filepath.Join(binDir, ffprobeName)
+	if err := os.WriteFile(ffprobePath, []byte("stub"), 0o755); err != nil {
+		t.Fatalf("write ffprobe stub: %v", err)
+	}
+
+	t.Setenv("ASRSUBS_RESOURCE_ROOT", "")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	service := &Service{}
+	resolved, err := service.resolveBinaryPath("ffprobe")
+	if err != nil {
+		t.Fatalf("resolve binary path: %v", err)
+	}
+	if resolved != ffprobePath {
+		t.Fatalf("expected PATH ffprobe path, got %s", resolved)
 	}
 }
 
