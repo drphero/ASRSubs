@@ -1,13 +1,25 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "ASRSubs",
+  "version": "2",
   "outputfilename": "ASRSubs",
+  "frontend:dir": "frontend",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "postBuildHooks": {
+    "windows/*": "./scripts/stage-runtime.sh ${platform} ${bin}"
+  },
   "author": {
     "name": "drphero",
     "email": "14174687+drphero@users.noreply.github.com"
+  },
+  "info": {
+    "companyName": "ASRSubs",
+    "productName": "ASRSubs",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright (c) 2026 ASRSubs",
+    "comments": "Local subtitle generation with bundled runtime delivery assets."
   }
 }
