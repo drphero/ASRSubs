@@ -1,19 +1,66 @@
-# README
+# ASRSubs
 
-## About
+ASRSubs is a Wails desktop app for local subtitle generation. Phase 5 packages the app as a macOS DMG and adds a Windows GitHub Actions pipeline that publishes both a portable bundle and an installer.
 
-This is the official Wails React-TS template.
+## Development
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+Run the live app shell with:
 
-## Live Development
+```bash
+wails dev
+```
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+Build the production frontend assets with:
 
-## Building
+```bash
+cd frontend && npm run build
+```
 
-To build a redistributable, production mode package, use `wails build`.
+## Packaging
+
+### macOS
+
+Package the signed-off macOS delivery build with:
+
+```bash
+./scripts/build-macos-package.sh
+```
+
+That flow:
+
+- builds `ASRSubs.app` with Wails
+- stages the managed Python runtime, `worker.py`, `requirements.txt`, `ffmpeg`, and `ffprobe` into `ASRSubs.app/Contents/Resources`
+- creates `build/bin/ASRSubs.dmg` with a drag-to-Applications layout
+
+Inputs for staging:
+
+- set `ASRSUBS_PYTHON_STANDALONE` to a standalone Python directory for the packaged runtime
+- set `ASRSUBS_FFMPEG_PATH` and `ASRSUBS_FFPROBE_PATH` when you want to pin specific macOS binaries
+- if those env vars are omitted, the staging helper falls back to `packaging/runtime/darwin/python`, `packaging/tools/darwin/ffmpeg`, `packaging/tools/darwin/ffprobe`, or the current shell `PATH`
+
+Unsigned macOS builds will trigger a Gatekeeper warning on first open. For local testing, open the app from Finder, then approve it from `System Settings > Privacy & Security` if macOS blocks the first launch.
+
+### Windows
+
+The repository publishes two Windows deliverables:
+
+- `ASRSubs-windows-portable.zip`: the app executable plus bundled runtime and `ffmpeg` payload
+- `ASRSubs-amd64-installer.exe`: the NSIS installer with the same staged runtime tree
+
+The GitHub Actions workflow lives at `.github/workflows/build-windows.yml`. It:
+
+1. restores Go, Node, and Python toolchains
+2. installs `ffmpeg`
+3. builds `ASRSubs.exe` with `wails build -clean -platform windows/amd64 -nsis -webview2 embed`
+4. stages the portable runtime layout with `./scripts/stage-runtime.sh windows/amd64`
+5. creates the portable ZIP and a custom NSIS installer that copies the staged `runtime/` and `bin/` directories
+
+Local verification helpers:
+
+```bash
+./scripts/verify-macos-package.sh
+./scripts/verify-windows-package-layout.sh
+./scripts/verify-windows-workflow.sh
+```
+
+Unsigned Windows builds will surface a SmartScreen warning. For manual testing, use `More info` then `Run anyway` once you trust the artifact source.
