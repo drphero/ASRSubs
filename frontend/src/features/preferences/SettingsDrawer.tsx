@@ -1,4 +1,5 @@
 import type { ModelStatus, Preferences, RuntimeReadiness } from "../../lib/backend";
+import { useOverlayPresence } from "../shell/useOverlayPresence";
 
 type SettingsDrawerProps = {
   error: string | null;
@@ -27,7 +28,9 @@ export function SettingsDrawer({
   runtimePreparing,
   runtimeReadiness,
 }: SettingsDrawerProps) {
-  if (!open) {
+  const { present, state } = useOverlayPresence(open);
+
+  if (!present) {
     return null;
   }
 
@@ -42,7 +45,7 @@ export function SettingsDrawer({
         : "Prepare runtime";
 
   return (
-    <div className="overlay-shell" role="presentation">
+    <div className="overlay-shell" data-state={state} role="presentation">
       <button aria-label="Close settings" className="overlay-backdrop" onClick={onClose} type="button" />
       <aside aria-label="settings drawer" className="drawer-panel" role="dialog">
         <div className="drawer-header">

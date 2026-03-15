@@ -1,8 +1,13 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { defaultModelSnapshot, defaultPreferences, defaultRuntimeReadiness } from "../../lib/backend";
+import { OVERLAY_EXIT_DURATION_MS } from "../shell/useOverlayPresence";
 import { SettingsDrawer } from "./SettingsDrawer";
 
 describe("SettingsDrawer", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("renders the drawer when open", () => {
     render(
       <SettingsDrawer
@@ -23,6 +28,54 @@ describe("SettingsDrawer", () => {
     expect(screen.getByLabelText("settings drawer")).toBeInTheDocument();
     expect(screen.getByText("Qwen3-ASR-1.7B")).toBeInTheDocument();
     expect(screen.getByLabelText("Qwen3-ASR-1.7B status")).toHaveTextContent("Not downloaded");
+  });
+
+  it("keeps the drawer mounted while closing and removes it after the exit duration", () => {
+    vi.useFakeTimers();
+
+    const { rerender } = render(
+      <SettingsDrawer
+        error={null}
+        modelStatuses={defaultModelSnapshot.models}
+        onClose={vi.fn()}
+        onDeleteModel={vi.fn()}
+        onDownloadModel={vi.fn()}
+        onPreferencesChange={vi.fn()}
+        onPrepareRuntime={vi.fn()}
+        open
+        preferences={defaultPreferences}
+        runtimePreparing={false}
+        runtimeReadiness={defaultRuntimeReadiness}
+      />,
+    );
+
+    rerender(
+      <SettingsDrawer
+        error={null}
+        modelStatuses={defaultModelSnapshot.models}
+        onClose={vi.fn()}
+        onDeleteModel={vi.fn()}
+        onDownloadModel={vi.fn()}
+        onPreferencesChange={vi.fn()}
+        onPrepareRuntime={vi.fn()}
+        open={false}
+        preferences={defaultPreferences}
+        runtimePreparing={false}
+        runtimeReadiness={defaultRuntimeReadiness}
+      />,
+    );
+
+    expect(screen.getByLabelText("settings drawer")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(OVERLAY_EXIT_DURATION_MS - 1);
+    });
+    expect(screen.getByLabelText("settings drawer")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.queryByLabelText("settings drawer")).not.toBeInTheDocument();
   });
 
   it("applies changes immediately through the callback", () => {
@@ -76,6 +129,30 @@ describe("SettingsDrawer", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Download model" })[0]);
 
     expect(onDownloadModel).toHaveBeenCalledWith("Qwen3-ASR-1.7B");
+  });
+
+  it("closes through the backdrop", () => {
+    const onClose = vi.fn();
+
+    render(
+      <SettingsDrawer
+        error={null}
+        modelStatuses={defaultModelSnapshot.models}
+        onClose={onClose}
+        onDeleteModel={vi.fn()}
+        onDownloadModel={vi.fn()}
+        onPreferencesChange={vi.fn()}
+        onPrepareRuntime={vi.fn()}
+        open
+        preferences={defaultPreferences}
+        runtimePreparing={false}
+        runtimeReadiness={defaultRuntimeReadiness}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Close settings"));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("disables line controls when one-word subtitles are enabled", () => {

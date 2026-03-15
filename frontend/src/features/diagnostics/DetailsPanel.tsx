@@ -1,4 +1,5 @@
 import type { DiagnosticsSnapshot } from "../../lib/backend";
+import { useOverlayPresence } from "../shell/useOverlayPresence";
 
 type DetailsPanelProps = {
   onClose: () => void;
@@ -7,12 +8,14 @@ type DetailsPanelProps = {
 };
 
 export function DetailsPanel({ onClose, open, snapshot }: DetailsPanelProps) {
-  if (!open) {
+  const { present, state } = useOverlayPresence(open);
+
+  if (!present) {
     return null;
   }
 
   return (
-    <div className="overlay-shell" role="presentation">
+    <div className="overlay-shell" data-state={state} role="presentation">
       <button aria-label="Close details" className="overlay-backdrop" onClick={onClose} type="button" />
       <aside aria-label="details panel" className="details-panel" role="dialog">
         <div className="drawer-header">

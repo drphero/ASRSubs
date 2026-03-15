@@ -525,10 +525,16 @@ button {
 }
 
 .overlay-shell {
+  --overlay-duration: 180ms;
+  --overlay-panel-shift: 22px;
   position: fixed;
   inset: 0;
   z-index: 10;
   display: grid;
+}
+
+.overlay-shell[data-state="closing"] {
+  pointer-events: none;
 }
 
 .overlay-backdrop {
@@ -536,6 +542,8 @@ button {
   inset: 0;
   background: rgba(4, 8, 14, 0.44);
   backdrop-filter: blur(10px);
+  opacity: 0;
+  transition: opacity var(--overlay-duration) ease;
 }
 
 .drawer-panel,
@@ -552,10 +560,26 @@ button {
   border-left: 1px solid var(--border-soft);
   box-shadow: -20px 0 54px rgba(0, 0, 0, 0.14);
   overflow-y: auto;
+  opacity: 0;
+  transform: translate3d(var(--overlay-panel-shift), 0, 0) scale(0.985);
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity var(--overlay-duration) ease;
+  will-change: transform, opacity;
 }
 
 .details-panel {
   width: min(520px, 94vw);
+}
+
+.overlay-shell[data-state="open"] .overlay-backdrop {
+  opacity: 1;
+}
+
+.overlay-shell[data-state="open"] .drawer-panel,
+.overlay-shell[data-state="open"] .details-panel {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
 }
 
 .runtime-overlay-shell {
@@ -575,6 +599,19 @@ button {
     linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
     var(--surface-2-solid);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-backdrop,
+  .drawer-panel,
+  .details-panel {
+    transition-duration: 1ms;
+  }
+
+  .drawer-panel,
+  .details-panel {
+    transform: none;
+  }
 }
 
 .runtime-overlay-copy {
