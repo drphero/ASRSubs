@@ -29,6 +29,8 @@ type MediaMetadata struct {
 type DurationProber func(ctx context.Context, inputPath string) (time.Duration, error)
 type Option func(*Service)
 
+const durationProbeTimeout = 20 * time.Second
+
 type Service struct {
 	probeDuration DurationProber
 }
@@ -114,8 +116,12 @@ func (s *Service) ValidateMediaFile(path string) (MediaMetadata, error) {
 }
 
 func detectDuration(path string, file *os.File, probe DurationProber) (time.Duration, bool) {
+	return detectDurationWithTimeout(path, file, probe, durationProbeTimeout)
+}
+
+func detectDurationWithTimeout(path string, file *os.File, probe DurationProber, timeout time.Duration) (time.Duration, bool) {
 	if probe != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
 		duration, err := probe(ctx, path)

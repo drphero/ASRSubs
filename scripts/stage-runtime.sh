@@ -29,7 +29,74 @@ resolve_runtime_source() {
     printf 'Set ASRSUBS_PYTHON_STANDALONE to a standalone Python directory for %s packaging.\n' "${platform_family}" >&2
     exit 1
   fi
+  validate_runtime_source "${candidate}"
   printf '%s\n' "${candidate}"
+}
+
+resolve_symlink_target() {
+  local path="$1"
+  while [[ -L "${path}" ]]; do
+    local target
+    target="$(readlink "${path}")"
+    if [[ "${target}" != /* ]]; then
+      path="$(cd "$(dirname "${path}")" && pwd -P)/${target}"
+    else
+      path="${target}"
+    fi
+  done
+
+  local resolved_dir
+  resolved_dir="$(cd "$(dirname "${path}")" && pwd -P)"
+  printf '%s/%s\n' "${resolved_dir}" "$(basename "${path}")"
+}
+
+validate_runtime_source() {
+  local candidate="$1"
+
+  if [[ "${platform_family}" != "darwin" ]]; then
+    return 0
+  fi
+
+  local candidate_root
+  candidate_root="$(cd "${candidate}" && pwd -P)"
+
+  if [[ -f "${candidate}/pyvenv.cfg" ]]; then
+    printf 'Managed runtime source is not standalone: %s contains pyvenv.cfg. Use a relocatable standalone Python via ASRSUBS_PYTHON_STANDALONE.\n' "${candidate}" >&2
+    exit 1
+  fi
+
+  local python_candidate=""
+  local maybe_python=""
+  for maybe_python in "${candidate}/bin/python3" "${candidate}/bin/python"; do
+    if [[ -e "${maybe_python}" ]]; then
+      python_candidate="${maybe_python}"
+      break
+    fi
+  done
+  if [[ -z "${python_candidate}" ]]; then
+    for maybe_python in "${candidate}"/bin/python3.*; do
+      if [[ -e "${maybe_python}" ]]; then
+        python_candidate="${maybe_python}"
+        break
+      fi
+    done
+  fi
+
+  if [[ -z "${python_candidate}" ]]; then
+    printf 'Managed runtime source is missing a Python executable under %s/bin.\n' "${candidate}" >&2
+    exit 1
+  fi
+
+  local resolved_python
+  resolved_python="$(resolve_symlink_target "${python_candidate}")"
+  case "${resolved_python}" in
+    "${candidate_root}"/*)
+      ;;
+    *)
+      printf 'Managed runtime source is not standalone: %s resolves outside %s. Use a relocatable standalone Python via ASRSUBS_PYTHON_STANDALONE.\n' "${python_candidate}" "${candidate_root}" >&2
+      exit 1
+      ;;
+  esac
 }
 
 resolve_binary_source() {

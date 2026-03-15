@@ -82,6 +82,72 @@ func TestValidateMediaFileUsesDurationProberForNonWAV(t *testing.T) {
 	}
 }
 
+func TestDetectDurationWithTimeoutAllowsModeratelySlowProbe(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	path := filepath.Join(tempDir, "sample.mp4")
+	if err := os.WriteFile(path, []byte("not-a-real-mp4"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("open file: %v", err)
+	}
+	defer file.Close()
+
+	duration, ok := detectDurationWithTimeout(path, file, func(ctx context.Context, inputPath string) (time.Duration, error) {
+		if inputPath != path {
+			t.Fatalf("unexpected probe path: %s", inputPath)
+		}
+		select {
+		case <-time.After(15 * time.Millisecond):
+			return 42 * time.Second, nil
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		}
+	}, 50*time.Millisecond)
+
+	if !ok {
+		t.Fatal("expected duration to be available")
+	}
+	if duration != 42*time.Second {
+		t.Fatalf("unexpected duration: %s", duration)
+	}
+}
+
+func TestDetectDurationWithTimeoutFallsBackWhenProbeTimesOut(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	path := filepath.Join(tempDir, "sample.mp4")
+	if err := os.WriteFile(path, []byte("not-a-real-mp4"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("open file: %v", err)
+	}
+	defer file.Close()
+
+	duration, ok := detectDurationWithTimeout(path, file, func(ctx context.Context, inputPath string) (time.Duration, error) {
+		if inputPath != path {
+			t.Fatalf("unexpected probe path: %s", inputPath)
+		}
+		<-ctx.Done()
+		return 0, ctx.Err()
+	}, 5*time.Millisecond)
+
+	if ok {
+		t.Fatal("expected duration to be unavailable after timeout")
+	}
+	if duration != 0 {
+		t.Fatalf("expected zero duration, got %s", duration)
+	}
+}
+
 func wavFixture(seconds int) []byte {
 	sampleRate := 8000
 	bitsPerSample := 16

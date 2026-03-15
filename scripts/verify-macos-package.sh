@@ -32,6 +32,23 @@ exit 0
 EOF
 chmod +x "${work_dir}/ffprobe"
 
+invalid_runtime_source="${work_dir}/sources/invalid-python"
+mkdir -p "${invalid_runtime_source}/bin"
+ln -s /bin/sh "${invalid_runtime_source}/bin/python3"
+cat <<'EOF' > "${invalid_runtime_source}/pyvenv.cfg"
+home = /tmp/not-standalone
+EOF
+
+if ASRSUBS_PYTHON_STANDALONE="${invalid_runtime_source}" \
+  ASRSUBS_FFMPEG_PATH="${work_dir}/ffmpeg" \
+  ASRSUBS_FFPROBE_PATH="${work_dir}/ffprobe" \
+  "${script_dir}/stage-runtime.sh" darwin "${app_path}" >/dev/null 2>"${work_dir}/invalid-runtime.log"; then
+  printf 'Expected darwin staging to reject a venv-style runtime source.\n' >&2
+  exit 1
+fi
+
+grep -q "not standalone" "${work_dir}/invalid-runtime.log"
+
 ASRSUBS_PYTHON_STANDALONE="${runtime_source}" \
 ASRSUBS_FFMPEG_PATH="${work_dir}/ffmpeg" \
 ASRSUBS_FFPROBE_PATH="${work_dir}/ffprobe" \

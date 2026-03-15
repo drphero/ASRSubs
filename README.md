@@ -37,6 +37,8 @@ Inputs for staging:
 - set `ASRSUBS_PYTHON_STANDALONE` to a standalone Python directory for the packaged runtime
 - set `ASRSUBS_FFMPEG_PATH` and `ASRSUBS_FFPROBE_PATH` when you want to pin specific macOS binaries
 - if those env vars are omitted, the staging helper falls back to `packaging/runtime/darwin/python`, `packaging/tools/darwin/ffmpeg`, `packaging/tools/darwin/ffprobe`, or the current shell `PATH`
+- macOS packaging now rejects `venv` or `uv`-style Python trees that contain `pyvenv.cfg` or resolve `bin/python*` outside the bundled runtime root
+- a correct portable macOS package will be much larger than a local host-linked `.app`, because it must carry a real standalone Python runtime
 
 Unsigned macOS builds will trigger a Gatekeeper warning on first open. For local testing, open the app from Finder, then approve it from `System Settings > Privacy & Security` if macOS blocks the first launch.
 
