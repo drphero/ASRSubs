@@ -231,6 +231,7 @@ func (s *Service) installRequirements(ctx context.Context) error {
 		"-r",
 		s.requirementsPath,
 	)
+	ConfigureSubprocess(cmd)
 	cmd.Env = append(os.Environ(), "PYTHONUTF8=1")
 	output, err := cmd.CombinedOutput()
 	if err != nil {

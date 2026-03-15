@@ -232,6 +232,7 @@ func probeDurationWithFFprobe(ctx context.Context, inputPath string) (time.Durat
 		"default=noprint_wrappers=1:nokey=1",
 		inputPath,
 	)
+	asrruntime.ConfigureSubprocess(cmd)
 
 	output, err := cmd.Output()
 	if err != nil {

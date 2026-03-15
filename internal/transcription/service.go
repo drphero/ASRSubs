@@ -678,6 +678,7 @@ func (s *Service) defaultPrepareMedia(ctx context.Context, inputPath string, out
 		"pcm_s16le",
 		outputPath,
 	)
+	asrruntime.ConfigureSubprocess(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		message := strings.TrimSpace(string(output))
@@ -706,6 +707,7 @@ func (s *Service) defaultProbeDuration(ctx context.Context, inputPath string) (t
 		"default=noprint_wrappers=1:nokey=1",
 		inputPath,
 	)
+	asrruntime.ConfigureSubprocess(cmd)
 	output, err := cmd.Output()
 	if err != nil {
 		return 0, err
@@ -733,6 +735,7 @@ func (s *Service) defaultSegmentMedia(ctx context.Context, inputPath string, out
 		"copy",
 		outputPath,
 	)
+	asrruntime.ConfigureSubprocess(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		message := strings.TrimSpace(string(output))

@@ -334,6 +334,7 @@ func (s *Service) defaultDownload(ctx context.Context, model ModelDescriptor, de
 	}, "; ")
 
 	cmd := exec.CommandContext(ctx, s.runtime.PythonPath(), "-c", script, model.RepoID, destination)
+	asrruntime.ConfigureSubprocess(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		message := strings.TrimSpace(string(output))
