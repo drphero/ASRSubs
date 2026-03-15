@@ -190,6 +190,10 @@ func (s *Service) PythonPath() string {
 	return s.pythonPath()
 }
 
+func (s *Service) CommandPythonPath() string {
+	return s.commandPythonPath()
+}
+
 func (s *Service) WorkerScriptPath() string {
 	return s.workerScriptPath
 }
@@ -223,7 +227,7 @@ func (s *Service) Status() Status {
 func (s *Service) installRequirements(ctx context.Context) error {
 	cmd := exec.CommandContext(
 		ctx,
-		s.pythonPath(),
+		s.commandPythonPath(),
 		"-m",
 		"pip",
 		"install",
@@ -431,6 +435,23 @@ func (s *Service) pythonPath() string {
 	}
 
 	return filepath.Join(s.installDir(), "bin", "python3")
+}
+
+func (s *Service) commandPythonPath() string {
+	return pythonCommandPathForOS(goruntime.GOOS, s.installDir())
+}
+
+func pythonCommandPathForOS(goos string, installDir string) string {
+	if goos == "windows" {
+		pythonwPath := filepath.Join(installDir, "pythonw.exe")
+		if fileExists(pythonwPath) {
+			return pythonwPath
+		}
+
+		return filepath.Join(installDir, "python.exe")
+	}
+
+	return filepath.Join(installDir, "bin", "python3")
 }
 
 func installManagedRuntime(source string, destination string) error {

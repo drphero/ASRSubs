@@ -98,7 +98,7 @@ func (s *Service) RunWorker(ctx context.Context, request WorkerRequest) (WorkerR
 		}
 	}
 
-	cmd := exec.CommandContext(ctx, s.pythonPath(), s.workerScriptPath)
+	cmd := exec.CommandContext(ctx, s.commandPythonPath(), s.workerScriptPath)
 	ConfigureSubprocess(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

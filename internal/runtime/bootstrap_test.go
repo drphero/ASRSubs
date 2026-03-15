@@ -192,6 +192,50 @@ func TestRuntimeStatusUsesBundledResourcesBeforeRepoPaths(t *testing.T) {
 	}
 }
 
+func TestPythonCommandPathPrefersPythonwOnWindows(t *testing.T) {
+	installDir := t.TempDir()
+	pythonPath := filepath.Join(installDir, "python.exe")
+	if err := os.WriteFile(pythonPath, []byte("stub"), 0o644); err != nil {
+		t.Fatalf("write python.exe: %v", err)
+	}
+	pythonwPath := filepath.Join(installDir, "pythonw.exe")
+	if err := os.WriteFile(pythonwPath, []byte("stub"), 0o644); err != nil {
+		t.Fatalf("write pythonw.exe: %v", err)
+	}
+
+	if got := pythonCommandPathForOS("windows", installDir); got != pythonwPath {
+		t.Fatalf("expected pythonw.exe, got %s", got)
+	}
+}
+
+func TestPythonCommandPathFallsBackToPythonExeOnWindows(t *testing.T) {
+	installDir := t.TempDir()
+	pythonPath := filepath.Join(installDir, "python.exe")
+	if err := os.WriteFile(pythonPath, []byte("stub"), 0o644); err != nil {
+		t.Fatalf("write python.exe: %v", err)
+	}
+
+	if got := pythonCommandPathForOS("windows", installDir); got != pythonPath {
+		t.Fatalf("expected python.exe fallback, got %s", got)
+	}
+}
+
+func TestPythonCommandPathUsesBinPython3OffWindows(t *testing.T) {
+	installDir := t.TempDir()
+	binDir := filepath.Join(installDir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("create bin dir: %v", err)
+	}
+	pythonPath := filepath.Join(binDir, "python3")
+	if err := os.WriteFile(pythonPath, []byte("stub"), 0o644); err != nil {
+		t.Fatalf("write python3: %v", err)
+	}
+
+	if got := pythonCommandPathForOS("linux", installDir); got != pythonPath {
+		t.Fatalf("expected bin/python3, got %s", got)
+	}
+}
+
 func writeSleepingRuntimeSource(t *testing.T) string {
 	t.Helper()
 

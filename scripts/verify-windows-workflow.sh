@@ -36,6 +36,7 @@ checks=(
   "/c/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/bin/ffmpeg.exe"
   "/c/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/bin/ffprobe.exe"
   "Smoke-test staged ffmpeg tools"
+  "Resolve-Path \"build/bin/ASRSubs-windows-portable/runtime/python/pythonw.exe\""
   "Resolve-Path \"build/bin/ASRSubs-windows-portable/bin/ffmpeg.exe\""
   "Resolve-Path \"build/bin/ASRSubs-windows-portable/bin/ffprobe.exe\""
   "throw \"staged ffmpeg.exe failed to execute\""

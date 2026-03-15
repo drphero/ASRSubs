@@ -85,8 +85,13 @@ jobs:
       - name: Smoke-test staged ffmpeg tools
         shell: pwsh
         run: |
+          $pythonw = (Resolve-Path "build/bin/ASRSubs-windows-portable/runtime/python/pythonw.exe").Path
           $ffmpeg = (Resolve-Path "build/bin/ASRSubs-windows-portable/bin/ffmpeg.exe").Path
           $ffprobe = (Resolve-Path "build/bin/ASRSubs-windows-portable/bin/ffprobe.exe").Path
+
+          if (-not (Test-Path $pythonw)) {
+            throw "staged pythonw.exe is missing"
+          }
 
           & $ffmpeg -version
           if ($LASTEXITCODE -ne 0) {

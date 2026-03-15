@@ -19,6 +19,10 @@ cat <<'EOF' > "${runtime_source}/python.exe"
 stub
 EOF
 
+cat <<'EOF' > "${runtime_source}/pythonw.exe"
+stub
+EOF
+
 cat <<'EOF' > "${choco_root}/bin/ffmpeg.exe"
 shim
 EOF
@@ -41,6 +45,7 @@ ASRSUBS_FFPROBE_PATH="${choco_root}/bin/ffprobe.exe" \
   "${script_dir}/stage-runtime.sh" windows/amd64 "${portable_root}/ASRSubs.exe" >/dev/null
 
 test -f "${portable_root}/runtime/python/python.exe"
+test -f "${portable_root}/runtime/python/pythonw.exe"
 test -f "${portable_root}/runtime/worker.py"
 test -f "${portable_root}/runtime/requirements.txt"
 test -f "${portable_root}/bin/ffmpeg.exe"

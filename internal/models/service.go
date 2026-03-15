@@ -333,7 +333,7 @@ func (s *Service) defaultDownload(ctx context.Context, model ModelDescriptor, de
 		"snapshot_download(repo_id=sys.argv[1], local_dir=sys.argv[2])",
 	}, "; ")
 
-	cmd := exec.CommandContext(ctx, s.runtime.PythonPath(), "-c", script, model.RepoID, destination)
+	cmd := exec.CommandContext(ctx, s.runtime.CommandPythonPath(), "-c", script, model.RepoID, destination)
 	asrruntime.ConfigureSubprocess(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
