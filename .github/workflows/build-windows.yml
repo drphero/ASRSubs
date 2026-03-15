@@ -107,10 +107,21 @@ jobs:
             throw "makensis executable not found after NSIS install"
           }
 
-          & $makensis `
-            -DARG_WAILS_AMD64_BINARY=..\..\bin\ASRSubs.exe `
-            -DASRSUBS_STAGE_DIR=..\..\bin\ASRSubs-windows-portable `
-            build/windows/installer/project.nsi
+          $repoRoot = $PWD.Path
+          $amd64Binary = (Resolve-Path "build/bin/ASRSubs.exe").Path
+          $stageDir = (Resolve-Path "build/bin/ASRSubs-windows-portable").Path
+
+          Push-Location "build/windows/installer"
+          try {
+            & $makensis `
+              "/DARG_WAILS_AMD64_BINARY=$amd64Binary" `
+              "/DASRSUBS_STAGE_DIR=$stageDir" `
+              "project.nsi"
+          }
+          finally {
+            Pop-Location
+          }
+
           Rename-Item "build/bin/ASRSubs-amd64-installer.exe" "build/bin/$env:ASRSUBS_INSTALLER_EXE" -Force
 
       - name: Verify workflow contract
