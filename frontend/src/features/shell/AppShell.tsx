@@ -127,8 +127,6 @@ export function AppShell({
                   hasSubtitleDraft={hasSubtitleDraft}
                   file={selectedFile}
                   onBrowse={onBrowse}
-                  onOpenDetails={onOpenDetails}
-                  onOpenSettings={onOpenSettings}
                   onStartTranscription={onStartTranscription}
                   runtimeReadiness={runtimeReadiness}
                   selectedModelStatus={selectedModelStatus}

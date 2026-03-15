@@ -154,8 +154,7 @@ button {
   color: var(--danger);
 }
 
-.topbar-actions,
-.workspace-header-actions {
+.topbar-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -354,9 +353,9 @@ button {
 
 .workspace-header {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1.5fr) auto;
+  gap: 24px 32px;
+  align-items: start;
 }
 
 .workspace-header-complete,
@@ -409,18 +408,19 @@ button {
   font-size: 0.84rem;
 }
 
-.workspace-model {
+.workspace-header-side {
   display: grid;
-  gap: 8px;
+  gap: 14px;
   justify-items: end;
+  align-content: start;
 }
 
-.workspace-model-copy {
-  margin: 0;
-  max-width: 220px;
-  color: var(--text-secondary);
-  text-align: right;
-  font-size: 0.9rem;
+.workspace-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 .summary-grid {
@@ -521,13 +521,6 @@ button {
   word-break: break-word;
 }
 
-.workspace-action-cluster {
-  display: grid;
-  gap: 12px;
-  justify-items: end;
-}
-
-.workspace-secondary-actions,
 .workspace-primary-actions {
   display: flex;
   flex-wrap: wrap;
@@ -832,8 +825,7 @@ button {
     margin-bottom: 24px;
   }
 
-  .topbar-actions,
-  .workspace-header-actions {
+  .topbar-actions {
     justify-content: flex-start;
   }
 
@@ -853,7 +845,7 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .workspace-secondary-actions,
+  .workspace-status-row,
   .workspace-primary-actions,
   .workspace-header-meta {
     justify-content: flex-start;
@@ -872,17 +864,8 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .workspace-model {
+  .workspace-header-side {
     justify-items: start;
-  }
-
-  .workspace-action-cluster {
-    justify-items: start;
-  }
-
-  .workspace-model-copy {
-    text-align: left;
-    max-width: none;
   }
 
   .editor-card-status {
