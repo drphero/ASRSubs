@@ -8,9 +8,6 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
-  "postBuildHooks": {
-    "windows/*": "../../scripts/stage-runtime.sh ${platform} ${bin}"
-  },
   "author": {
     "name": "drphero",
     "email": "14174687+drphero@users.noreply.github.com"

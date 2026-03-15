@@ -5,7 +5,6 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 workflow_path="${repo_root}/.github/workflows/build-windows.yml"
 readme_path="${repo_root}/README.md"
-wails_config_path="${repo_root}/wails.json"
 
 if [[ ! -f "${workflow_path}" ]]; then
   printf 'Workflow file is missing: %s\n' "${workflow_path}" >&2
@@ -14,11 +13,6 @@ fi
 
 if [[ ! -f "${readme_path}" ]]; then
   printf 'README is missing: %s\n' "${readme_path}" >&2
-  exit 1
-fi
-
-if [[ ! -f "${wails_config_path}" ]]; then
-  printf 'Wails config is missing: %s\n' "${wails_config_path}" >&2
   exit 1
 fi
 
@@ -78,10 +72,5 @@ for needle in "${readme_checks[@]}"; do
     exit 1
   fi
 done
-
-if ! grep -Fq '"windows/*": "../../scripts/stage-runtime.sh ${platform} ${bin}"' "${wails_config_path}"; then
-  printf 'Wails config check failed: windows postBuildHooks must reference ../../scripts/stage-runtime.sh\n' >&2
-  exit 1
-fi
 
 printf 'Windows workflow verification passed.\n'
