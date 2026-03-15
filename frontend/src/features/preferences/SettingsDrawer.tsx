@@ -1,4 +1,4 @@
-import type { ModelStatus, Preferences } from "../../lib/backend";
+import type { ModelStatus, Preferences, RuntimeReadiness } from "../../lib/backend";
 
 type SettingsDrawerProps = {
   error: string | null;
@@ -7,8 +7,11 @@ type SettingsDrawerProps = {
   onDeleteModel: (modelID: ModelStatus["id"]) => void | Promise<unknown>;
   onDownloadModel: (modelID: ModelStatus["id"]) => void | Promise<unknown>;
   onPreferencesChange: (preferences: Preferences) => void | Promise<unknown>;
+  onPrepareRuntime: () => void | Promise<unknown>;
   open: boolean;
   preferences: Preferences;
+  runtimePreparing: boolean;
+  runtimeReadiness: RuntimeReadiness;
 };
 
 export function SettingsDrawer({
@@ -18,14 +21,25 @@ export function SettingsDrawer({
   onDeleteModel,
   onDownloadModel,
   onPreferencesChange,
+  onPrepareRuntime,
   open,
   preferences,
+  runtimePreparing,
+  runtimeReadiness,
 }: SettingsDrawerProps) {
   if (!open) {
     return null;
   }
 
   const outputControlsDisabled = preferences.processing.oneWordPerSubtitle;
+  const runtimeFailed = runtimeReadiness.state === "failed";
+  const runtimeActionLabel = runtimePreparing
+    ? "Preparing runtime..."
+    : runtimeFailed
+      ? "Repair runtime"
+      : runtimeReadiness.state === "ready"
+        ? "Prepare again"
+        : "Prepare runtime";
 
   return (
     <div className="overlay-shell" role="presentation">
@@ -239,6 +253,43 @@ export function SettingsDrawer({
           </div>
         </div>
 
+        <div className="drawer-group">
+          <div className="drawer-group-copy">
+            <p className="section-label">Managed runtime</p>
+            <h3>Check the packaged Python environment.</h3>
+            <p className="workspace-copy">
+              Use this when the bundled runtime is missing, stale, or needs a manual repair pass.
+            </p>
+          </div>
+
+          <div className="runtime-status-card">
+            <div className="runtime-status-header">
+              <div>
+                <span>Runtime status</span>
+                <strong>{formatRuntimeState(runtimeReadiness.state)}</strong>
+              </div>
+              <span className={`status-pill status-pill-${runtimeFailed ? "failed" : runtimeReadiness.state}`}>
+                {formatRuntimeState(runtimeReadiness.state)}
+              </span>
+            </div>
+
+            <p className="model-card-copy">
+              {runtimeReadiness.detail || "ASRSubs prepares the managed runtime on demand."}
+            </p>
+
+            <div className="field field-static runtime-status-field">
+              <span>Install location</span>
+              <strong className="runtime-path-value" title={runtimeReadiness.rootDir || undefined}>
+                {formatRuntimeLocation(runtimeReadiness.rootDir)}
+              </strong>
+            </div>
+
+            <button className="primary-action runtime-status-action" disabled={runtimePreparing} onClick={onPrepareRuntime} type="button">
+              {runtimeActionLabel}
+            </button>
+          </div>
+        </div>
+
         {error ? (
           <p className="inline-feedback inline-feedback-error" role="alert">
             {error}
@@ -249,4 +300,26 @@ export function SettingsDrawer({
       </aside>
     </div>
   );
+}
+
+function formatRuntimeState(state: RuntimeReadiness["state"]) {
+  if (state === "ready") {
+    return "Ready";
+  }
+  if (state === "failed") {
+    return "Needs attention";
+  }
+  if (state === "missing") {
+    return "Not prepared";
+  }
+
+  return state;
+}
+
+function formatRuntimeLocation(path: string) {
+  if (!path) {
+    return "App config directory";
+  }
+
+  return path.replace(/^\/Users\/[^/]+/, "~").replace(/^([A-Za-z]):\\Users\\[^\\]+/, "~");
 }

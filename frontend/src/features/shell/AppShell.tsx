@@ -167,8 +167,11 @@ export function AppShell({
         onDeleteModel={onDeleteModel}
         onDownloadModel={onDownloadModel}
         onPreferencesChange={onPreferencesChange}
+        onPrepareRuntime={onPrepareRuntime}
         open={showSettings}
         preferences={preferences}
+        runtimePreparing={runtimePreparing}
+        runtimeReadiness={runtimeReadiness}
       />
       <DetailsPanel onClose={onCloseDetails} open={showDetails} snapshot={diagnostics} />
       <RuntimeSetupOverlay

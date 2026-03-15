@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { defaultModelSnapshot, defaultPreferences } from "../../lib/backend";
+import { defaultModelSnapshot, defaultPreferences, defaultRuntimeReadiness } from "../../lib/backend";
 import { SettingsDrawer } from "./SettingsDrawer";
 
 describe("SettingsDrawer", () => {
@@ -12,8 +12,11 @@ describe("SettingsDrawer", () => {
         onDeleteModel={vi.fn()}
         onDownloadModel={vi.fn()}
         onPreferencesChange={vi.fn()}
+        onPrepareRuntime={vi.fn()}
         open
         preferences={defaultPreferences}
+        runtimePreparing={false}
+        runtimeReadiness={defaultRuntimeReadiness}
       />,
     );
 
@@ -33,8 +36,11 @@ describe("SettingsDrawer", () => {
         onDeleteModel={vi.fn()}
         onDownloadModel={vi.fn()}
         onPreferencesChange={onPreferencesChange}
+        onPrepareRuntime={vi.fn()}
         open
         preferences={defaultPreferences}
+        runtimePreparing={false}
+        runtimeReadiness={defaultRuntimeReadiness}
       />,
     );
 
@@ -59,8 +65,11 @@ describe("SettingsDrawer", () => {
         onDeleteModel={vi.fn()}
         onDownloadModel={onDownloadModel}
         onPreferencesChange={vi.fn()}
+        onPrepareRuntime={vi.fn()}
         open
         preferences={defaultPreferences}
+        runtimePreparing={false}
+        runtimeReadiness={defaultRuntimeReadiness}
       />,
     );
 
@@ -78,6 +87,7 @@ describe("SettingsDrawer", () => {
         onDeleteModel={vi.fn()}
         onDownloadModel={vi.fn()}
         onPreferencesChange={vi.fn()}
+        onPrepareRuntime={vi.fn()}
         open
         preferences={{
           ...defaultPreferences,
@@ -86,6 +96,8 @@ describe("SettingsDrawer", () => {
             oneWordPerSubtitle: true,
           },
         }}
+        runtimePreparing={false}
+        runtimeReadiness={defaultRuntimeReadiness}
       />,
     );
 
