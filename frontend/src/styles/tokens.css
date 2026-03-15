@@ -569,6 +569,77 @@ button {
   width: min(520px, 94vw);
 }
 
+.runtime-overlay-shell {
+  place-items: center;
+}
+
+.runtime-overlay-panel {
+  position: relative;
+  z-index: 1;
+  width: min(760px, calc(100vw - 32px));
+  padding: 28px;
+  display: grid;
+  gap: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 28px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    var(--surface-2-solid);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+}
+
+.runtime-overlay-copy,
+.runtime-overlay-note {
+  display: grid;
+  gap: 8px;
+}
+
+.runtime-overlay-copy h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  letter-spacing: -0.05em;
+}
+
+.runtime-overlay-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.runtime-overlay-grid .summary-stat {
+  min-height: 100%;
+}
+
+.runtime-overlay-grid .summary-stat strong {
+  word-break: break-word;
+}
+
+.runtime-overlay-message {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.runtime-overlay-message p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.runtime-overlay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.runtime-overlay-actions .primary-action,
+.runtime-overlay-actions .ghost-action {
+  min-width: 160px;
+}
+
 .drawer-header {
   display: flex;
   justify-content: space-between;
@@ -825,6 +896,18 @@ button {
   .model-stat-grid,
   .model-card-actions {
     grid-template-columns: 1fr;
+  }
+
+  .runtime-overlay-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .runtime-overlay-actions {
+    width: 100%;
+  }
+
+  .runtime-overlay-panel {
+    padding: 22px;
   }
 
   .model-card-header {

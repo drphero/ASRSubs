@@ -7,21 +7,28 @@ import { AppShell } from "./features/shell/AppShell";
 import {
   defaultModelSnapshot,
   defaultDiagnostics,
+  defaultRuntimeReadiness,
   deleteModel,
+  ensureRuntimeReady,
   getDiagnosticsSnapshot,
+  getRuntimeReadiness,
   loadModelSnapshot,
   startModelDownload,
   type DiagnosticsSnapshot,
   type ModelSnapshot,
   type ModelStatus,
+  type RuntimeReadiness,
 } from "./lib/backend";
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showRuntimeOverlay, setShowRuntimeOverlay] = useState(false);
+  const [runtimePreparing, setRuntimePreparing] = useState(false);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsSnapshot>(defaultDiagnostics);
   const [modelSnapshot, setModelSnapshot] = useState<ModelSnapshot>(defaultModelSnapshot);
   const [modelError, setModelError] = useState<string | null>(null);
+  const [runtimeReadiness, setRuntimeReadiness] = useState<RuntimeReadiness>(defaultRuntimeReadiness);
   const preferences = usePreferences();
   const intake = useFileIntake({
     onAcceptedFile(file) {
@@ -61,6 +68,28 @@ export default function App() {
         }
 
         setModelError("Model state could not be loaded.");
+      });
+
+    void getRuntimeReadiness()
+      .then((readiness) => {
+        if (!active) {
+          return;
+        }
+
+        setRuntimeReadiness(readiness);
+        setShowRuntimeOverlay(readiness.state !== "ready");
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+
+        setRuntimeReadiness({
+          ...defaultRuntimeReadiness,
+          state: "failed",
+          detail: "Managed runtime state could not be loaded.",
+        });
+        setShowRuntimeOverlay(true);
       });
 
     void getDiagnosticsSnapshot()
@@ -124,11 +153,55 @@ export default function App() {
   }
 
   async function handleStartTranscription() {
+    if (runtimeReadiness.state !== "ready") {
+      setShowRuntimeOverlay(true);
+      return;
+    }
+
+    if (selectedModelStatus?.state !== "ready") {
+      await handleModelAction(selectedModelStatus);
+      return;
+    }
+
     if (!(await transcription.confirmDiscardIfDirty())) {
       return;
     }
 
     await transcription.start();
+  }
+
+  async function handlePrepareRuntime() {
+    setRuntimePreparing(true);
+    try {
+      const readiness = await ensureRuntimeReady();
+      setRuntimeReadiness(readiness);
+      setShowRuntimeOverlay(readiness.state !== "ready");
+      setModelError(null);
+    } catch (caught) {
+      setRuntimeReadiness((current) => ({
+        ...current,
+        state: "failed",
+        detail: resolveMessage(caught, "Managed runtime could not be prepared."),
+      }));
+      setShowRuntimeOverlay(true);
+    } finally {
+      setRuntimePreparing(false);
+    }
+  }
+
+  async function handleModelAction(status: ModelStatus | null) {
+    if (!status) {
+      setModelError("Selected model state is unavailable.");
+      return;
+    }
+
+    if (status.state === "downloading") {
+      setModelError(`${status.name} is still downloading.`);
+      return;
+    }
+
+    setModelError(`${status.name} must be downloaded before transcription can start.`);
+    await handleDownloadModel(status.id);
   }
 
   return (
@@ -145,15 +218,20 @@ export default function App() {
       onDownloadModel={handleDownloadModel}
       onOpenDetails={() => setShowDetails(true)}
       onOpenSettings={() => setShowSettings(true)}
+      onCloseRuntimeSetup={() => setShowRuntimeOverlay(false)}
       onPreferencesChange={preferences.replacePreferences}
+      onPrepareRuntime={handlePrepareRuntime}
       onRetryTranscription={transcription.retry}
       onSaveSubtitleDraft={transcription.saveEditor}
       onStartTranscription={handleStartTranscription}
       preferences={preferences.preferences}
       preferencesError={preferences.error ?? modelError ?? transcription.error}
+      runtimePreparing={runtimePreparing}
+      runtimeReadiness={runtimeReadiness}
       selectedFile={intake.selectedFile}
       selectedModelStatus={selectedModelStatus}
       showDetails={showDetails}
+      showRuntimeSetup={showRuntimeOverlay}
       showSettings={showSettings}
       subtitleEditor={transcription.editor}
       onSubtitleChange={transcription.updateEditorText}

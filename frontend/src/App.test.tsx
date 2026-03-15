@@ -22,14 +22,33 @@ vi.mock("../wailsjs/runtime/runtime", () => ({
 
 vi.mock("./lib/backend", async () => {
   const actual = await vi.importActual<typeof import("./lib/backend")>("./lib/backend");
+  const readyModelSnapshot = {
+    ...actual.defaultModelSnapshot,
+    models: actual.defaultModelSnapshot.models.map((model) => ({
+      ...model,
+      path: `/models/${model.id}`,
+      state: "ready" as const,
+      stateLabel: "Ready" as const,
+    })),
+  };
   return {
     ...actual,
     confirmDiscardSubtitleDraft: vi.fn().mockResolvedValue(true),
     deleteModel: vi.fn(),
+    ensureRuntimeReady: vi.fn().mockResolvedValue({
+      ...actual.defaultRuntimeReadiness,
+      detail: "Managed runtime prepared and dependencies installed.",
+      state: "ready",
+    }),
     getDiagnosticsSnapshot: vi.fn().mockResolvedValue(actual.defaultDiagnostics),
+    getRuntimeReadiness: vi.fn().mockResolvedValue({
+      ...actual.defaultRuntimeReadiness,
+      detail: "Managed runtime executable is present.",
+      state: "ready",
+    }),
     getSubtitleDraft: vi.fn(),
     getTranscriptionSnapshot: vi.fn().mockResolvedValue(actual.defaultTranscriptionSnapshot),
-    loadModelSnapshot: vi.fn().mockResolvedValue(actual.defaultModelSnapshot),
+    loadModelSnapshot: vi.fn().mockResolvedValue(readyModelSnapshot),
     loadPreferences: vi.fn().mockResolvedValue(actual.defaultPreferences),
     retryTranscription: vi.fn(),
     saveSubtitleDraft: vi.fn(),
@@ -93,6 +112,24 @@ describe("App shell", () => {
     expect(await screen.findByLabelText("workspace view")).toBeInTheDocument();
     expect(screen.getByText("Local transcription is set up for this file.")).toBeInTheDocument();
     expect(screen.getByText("1.2 KB")).toBeInTheDocument();
+  });
+
+  it("shows the runtime setup overlay when preparation is still required", async () => {
+    vi.mocked(backend.getRuntimeReadiness).mockResolvedValueOnce({
+      ...backend.defaultRuntimeReadiness,
+      detail: "Managed runtime has not been prepared yet.",
+      state: "missing",
+    });
+
+    render(<App />);
+
+    expect(await screen.findByLabelText("runtime setup overlay")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Prepare Runtime" }));
+    });
+
+    expect(backend.ensureRuntimeReady).toHaveBeenCalledTimes(1);
   });
 
   it("loads the subtitle draft once after success and preserves local edits", async () => {

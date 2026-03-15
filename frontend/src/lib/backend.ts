@@ -56,6 +56,14 @@ export interface DiagnosticsSnapshot {
   entries: DiagnosticsEntry[];
 }
 
+export interface RuntimeReadiness {
+  state: "ready" | "missing" | "failed" | string;
+  rootDir: string;
+  pythonPath: string;
+  workerPath: string;
+  detail: string;
+}
+
 export interface ModelStatus {
   id: ModelID;
   name: string;
@@ -129,8 +137,10 @@ export interface TranscriptionSnapshot {
 type GoAppApi = {
   DeleteModel: (modelID: ModelID) => Promise<ModelStatus>;
   ConfirmDiscardSubtitleDraft: () => Promise<boolean>;
+  EnsureRuntimeReady: () => Promise<RuntimeReadiness>;
   GetModelState: (modelID: ModelID) => Promise<ModelStatus>;
   GetDiagnosticsSnapshot: () => Promise<DiagnosticsSnapshot>;
+  GetRuntimeReadiness: () => Promise<RuntimeReadiness>;
   GetSubtitleDraft: () => Promise<SubtitleDraft>;
   GetTranscriptionSnapshot: () => Promise<TranscriptionSnapshot>;
   LoadPreferences: () => Promise<Preferences>;
@@ -179,6 +189,14 @@ export const defaultDiagnostics: DiagnosticsSnapshot = {
     level: "info",
   },
   entries: [],
+};
+
+export const defaultRuntimeReadiness: RuntimeReadiness = {
+  state: "missing",
+  rootDir: "",
+  pythonPath: "",
+  workerPath: "",
+  detail: "Managed runtime has not been prepared yet.",
 };
 
 const defaultModelStatuses: ModelStatus[] = [
@@ -257,6 +275,14 @@ export function validateMediaPath(path: string) {
 
 export function getDiagnosticsSnapshot() {
   return getAppMethod("GetDiagnosticsSnapshot")();
+}
+
+export function getRuntimeReadiness() {
+  return getAppMethod("GetRuntimeReadiness")();
+}
+
+export function ensureRuntimeReady() {
+  return getAppMethod("EnsureRuntimeReady")();
 }
 
 export function loadModelSnapshot() {

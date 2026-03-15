@@ -1,10 +1,17 @@
-import type { DiagnosticsSnapshot, MediaMetadata, ModelStatus, Preferences } from "../../lib/backend";
+import type {
+  DiagnosticsSnapshot,
+  MediaMetadata,
+  ModelStatus,
+  Preferences,
+  RuntimeReadiness,
+} from "../../lib/backend";
 import { SubtitleEditorCard } from "../editor/SubtitleEditorCard";
 import type { SubtitleEditorSession } from "../processing/useTranscriptionSession";
 import { DetailsPanel } from "../diagnostics/DetailsPanel";
 import { MediaDropzone } from "../intake/MediaDropzone";
 import { SettingsDrawer } from "../preferences/SettingsDrawer";
 import { ProcessingView } from "../processing/ProcessingView";
+import { RuntimeSetupOverlay } from "../runtime/RuntimeSetupOverlay";
 import { SelectedFileSummary } from "../workspace/SelectedFileSummary";
 import { WorkspaceHeader } from "../workspace/WorkspaceHeader";
 
@@ -21,16 +28,21 @@ type AppShellProps = {
   onDownloadModel: (modelID: ModelStatus["id"]) => void | Promise<unknown>;
   onOpenDetails: () => void;
   onOpenSettings: () => void;
+  onCloseRuntimeSetup: () => void;
   onPreferencesChange: (preferences: Preferences) => void | Promise<unknown>;
+  onPrepareRuntime: () => void | Promise<unknown>;
   onRetryTranscription: () => void | Promise<unknown>;
   onSaveSubtitleDraft: () => void | Promise<unknown>;
   onStartTranscription: () => void | Promise<unknown>;
   onSubtitleChange: (text: string) => void;
   preferences: Preferences;
   preferencesError: string | null;
+  runtimePreparing: boolean;
+  runtimeReadiness: RuntimeReadiness;
   selectedFile: MediaMetadata | null;
   selectedModelStatus: ModelStatus | null;
   showDetails: boolean;
+  showRuntimeSetup: boolean;
   showSettings: boolean;
   subtitleEditor: SubtitleEditorSession;
   transcription: import("../../lib/backend").TranscriptionSnapshot;
@@ -49,16 +61,21 @@ export function AppShell({
   onDownloadModel,
   onOpenDetails,
   onOpenSettings,
+  onCloseRuntimeSetup,
   onPreferencesChange,
+  onPrepareRuntime,
   onRetryTranscription,
   onSaveSubtitleDraft,
   onStartTranscription,
   onSubtitleChange,
   preferences,
   preferencesError,
+  runtimePreparing,
+  runtimeReadiness,
   selectedFile,
   selectedModelStatus,
   showDetails,
+  showRuntimeSetup,
   showSettings,
   subtitleEditor,
   transcription,
@@ -113,6 +130,7 @@ export function AppShell({
                   onOpenDetails={onOpenDetails}
                   onOpenSettings={onOpenSettings}
                   onStartTranscription={onStartTranscription}
+                  runtimeReadiness={runtimeReadiness}
                   selectedModelStatus={selectedModelStatus}
                 />
                 {subtitleEditor.draft ? (
@@ -160,6 +178,14 @@ export function AppShell({
         preferences={preferences}
       />
       <DetailsPanel onClose={onCloseDetails} open={showDetails} snapshot={diagnostics} />
+      <RuntimeSetupOverlay
+        busy={runtimePreparing}
+        onClose={onCloseRuntimeSetup}
+        onOpenDetails={onOpenDetails}
+        onPrepare={onPrepareRuntime}
+        open={showRuntimeSetup}
+        readiness={runtimeReadiness}
+      />
     </div>
   );
 }

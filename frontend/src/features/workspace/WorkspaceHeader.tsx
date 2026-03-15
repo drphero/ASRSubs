@@ -1,4 +1,4 @@
-import type { MediaMetadata, ModelStatus } from "../../lib/backend";
+import type { MediaMetadata, ModelStatus, RuntimeReadiness } from "../../lib/backend";
 
 type WorkspaceHeaderProps = {
   file: MediaMetadata;
@@ -7,6 +7,7 @@ type WorkspaceHeaderProps = {
   onOpenDetails: () => void;
   onOpenSettings: () => void;
   onStartTranscription: () => void | Promise<unknown>;
+  runtimeReadiness: RuntimeReadiness;
   selectedModelStatus: ModelStatus | null;
 };
 
@@ -17,8 +18,12 @@ export function WorkspaceHeader({
   onOpenDetails,
   onOpenSettings,
   onStartTranscription,
+  runtimeReadiness,
   selectedModelStatus,
 }: WorkspaceHeaderProps) {
+  const primaryActionLabel = resolvePrimaryActionLabel(hasSubtitleDraft, runtimeReadiness, selectedModelStatus);
+  const modelCopy = resolveModelCopy(runtimeReadiness, selectedModelStatus);
+
   return (
     <div className={`workspace-header ${hasSubtitleDraft ? "workspace-header-complete" : ""}`.trim()}>
       <div className="workspace-header-copy">
@@ -42,9 +47,7 @@ export function WorkspaceHeader({
           >
             {selectedModelStatus?.stateLabel ?? "Not downloaded"}
           </span>
-          <p className="workspace-model-copy">
-            {selectedModelStatus?.speedDescription ?? "Model state unavailable"}
-          </p>
+          <p className="workspace-model-copy">{modelCopy}</p>
         </div>
         <div className="workspace-action-cluster">
           <div className="workspace-secondary-actions">
@@ -57,7 +60,7 @@ export function WorkspaceHeader({
           </div>
           <div className="workspace-primary-actions">
             <button className="primary-action" onClick={onStartTranscription} type="button">
-              {hasSubtitleDraft ? "Run Again" : "Start Transcription"}
+              {primaryActionLabel}
             </button>
             <button className="ghost-action" onClick={onBrowse} type="button">
               Replace File
@@ -67,4 +70,43 @@ export function WorkspaceHeader({
       </div>
     </div>
   );
+}
+
+function resolvePrimaryActionLabel(
+  hasSubtitleDraft: boolean,
+  runtimeReadiness: RuntimeReadiness,
+  selectedModelStatus: ModelStatus | null,
+) {
+  if (runtimeReadiness.state !== "ready") {
+    return "Prepare Runtime";
+  }
+  if (!selectedModelStatus || selectedModelStatus.state === "not_downloaded") {
+    return "Download Model";
+  }
+  if (selectedModelStatus.state === "downloading") {
+    return "Model Downloading...";
+  }
+  if (selectedModelStatus.state === "failed") {
+    return "Retry Model Download";
+  }
+  return hasSubtitleDraft ? "Run Again" : "Start Transcription";
+}
+
+function resolveModelCopy(runtimeReadiness: RuntimeReadiness, selectedModelStatus: ModelStatus | null) {
+  if (runtimeReadiness.state !== "ready") {
+    return "Prepare the managed runtime first, then download any missing models from the normal workspace.";
+  }
+  if (!selectedModelStatus) {
+    return "Model state unavailable";
+  }
+  if (selectedModelStatus.state === "ready") {
+    return selectedModelStatus.speedDescription;
+  }
+  if (selectedModelStatus.state === "downloading") {
+    return `${selectedModelStatus.name} is downloading. Transcription will stay blocked until it is ready.`;
+  }
+  if (selectedModelStatus.state === "failed") {
+    return `${selectedModelStatus.name} needs another download attempt before transcription can start.`;
+  }
+  return `${selectedModelStatus.name} is not downloaded yet. Use the primary action to fetch it without leaving this workspace.`;
 }
