@@ -94,7 +94,20 @@ jobs:
       - name: Build NSIS installer
         shell: pwsh
         run: |
-          makensis `
+          $makensis = (Get-Command makensis -ErrorAction SilentlyContinue).Source
+          if (-not $makensis) {
+            $candidates = @(
+              "$env:ProgramData\chocolatey\bin\makensis.exe",
+              "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
+              "$env:ProgramFiles\NSIS\makensis.exe"
+            )
+            $makensis = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $makensis) {
+            throw "makensis executable not found after NSIS install"
+          }
+
+          & $makensis `
             -DARG_WAILS_AMD64_BINARY=..\..\bin\ASRSubs.exe `
             -DASRSUBS_STAGE_DIR=..\..\bin\ASRSubs-windows-portable `
             build/windows/installer/project.nsi
