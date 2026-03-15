@@ -55,6 +55,10 @@ jobs:
         shell: pwsh
         run: choco install ffmpeg --version=7.1.1 -y
 
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y
+
       - name: Build Windows executable and NSIS scaffolding
         shell: pwsh
         run: wails build -clean -platform windows/amd64 -nsis -webview2 embed

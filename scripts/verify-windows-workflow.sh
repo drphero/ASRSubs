@@ -29,6 +29,7 @@ checks=(
   "go-version-file: go.mod"
   "cache-dependency-path: frontend/package-lock.json"
   "choco install ffmpeg --version=7.1.1 -y"
+  "choco install nsis -y"
   "go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0"
   "wails build -clean -platform windows/amd64 -nsis -webview2 embed"
   "./scripts/stage-runtime.sh windows/amd64"
