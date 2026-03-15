@@ -39,7 +39,7 @@ if [[ "${skip_build}" != "true" ]]; then
     exit 1
   fi
 
-  (cd "${repo_root}" && wails build -clean -pack -platform darwin/universal)
+  (cd "${repo_root}" && wails build -clean -platform darwin/universal)
 fi
 
 if [[ ! -d "${app_path}" ]]; then

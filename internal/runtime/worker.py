@@ -197,8 +197,12 @@ def normalize_transcription(result):
 def normalize_alignment(result):
     if isinstance(result, list) and result and isinstance(result[0], list):
         result = result[0]
+    elif isinstance(result, list) and result:
+        _, nested_words = get_field(result[0], "items", "words")
+        if nested_words is not None:
+            result = nested_words
     elif not isinstance(result, list):
-        _, nested_words = get_field(result, "words", "items")
+        _, nested_words = get_field(result, "items", "words")
         if nested_words is None:
             raise RuntimeError("qwen aligner result did not include words")
         result = nested_words

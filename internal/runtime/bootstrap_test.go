@@ -21,7 +21,7 @@ func TestRuntimeBootstrapCreatesManagedRuntime(t *testing.T) {
 
 	service := NewServiceAtRoot(
 		filepath.Join(rootDir, "managed"),
-		WithManagedRuntimeSource(writeFakeRuntimeSource(t, writeFakeQwenModule(t))),
+		WithManagedRuntimeSource(writeFakeRuntimeSource(t, writeFakeQwenModule(t, "nested_list"))),
 		WithRequirementsPath(requirementsPath),
 		WithWorkerScriptPath(filepath.Join(rootDir, "worker.py")),
 	)

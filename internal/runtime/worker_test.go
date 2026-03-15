@@ -55,6 +55,35 @@ func TestWorkerReturnsStructuredAlignmentDetails(t *testing.T) {
 	}
 }
 
+func TestWorkerReturnsStructuredAlignmentDetailsFromForcedAlignResultItems(t *testing.T) {
+	service := newPreparedRuntimeServiceWithAlignmentShape(t, "forced_align_result")
+	audioPath := writeFakeAudioFile(t, "clip.wav")
+	modelPath := writeFakeModelDir(t, "asr")
+	alignerPath := writeFakeModelDir(t, "aligner")
+
+	response, err := service.RunWorker(context.Background(), WorkerRequest{
+		Command:     "align",
+		AudioPath:   audioPath,
+		ModelPath:   modelPath,
+		AlignerPath: alignerPath,
+		Transcript: &TranscriptPayload{
+			Text:  "alpha beta",
+			Words: []TranscriptToken{{Text: "alpha"}, {Text: "beta"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("align worker: %v", err)
+	}
+
+	var payload AlignmentPayload
+	if err := response.DecodeDetails(&payload); err != nil {
+		t.Fatalf("decode details: %v", err)
+	}
+	if len(payload.Words) != 2 {
+		t.Fatalf("expected 2 aligned words, got %d", len(payload.Words))
+	}
+}
+
 func TestWorkerReturnsRealModelTranscriptionPayload(t *testing.T) {
 	service := newPreparedRuntimeService(t)
 	audioPath := writeFakeAudioFile(t, "my_demo_file.wav")
@@ -149,6 +178,12 @@ func TestWorkerCancelsWithContext(t *testing.T) {
 func newPreparedRuntimeService(t *testing.T) *Service {
 	t.Helper()
 
+	return newPreparedRuntimeServiceWithAlignmentShape(t, "nested_list")
+}
+
+func newPreparedRuntimeServiceWithAlignmentShape(t *testing.T, alignmentShape string) *Service {
+	t.Helper()
+
 	rootDir := t.TempDir()
 	requirementsPath := filepath.Join(rootDir, "requirements.txt")
 	if err := os.WriteFile(requirementsPath, []byte("qwen-asr==0.0.6\n"), 0o644); err != nil {
@@ -156,7 +191,7 @@ func newPreparedRuntimeService(t *testing.T) *Service {
 	}
 
 	t.Setenv("ASRSUBS_FAKE_PIP_LOG", filepath.Join(rootDir, "pip.log"))
-	fakeModuleRoot := writeFakeQwenModule(t)
+	fakeModuleRoot := writeFakeQwenModule(t, alignmentShape)
 
 	service := NewServiceAtRoot(
 		filepath.Join(rootDir, "managed"),
@@ -200,7 +235,7 @@ func writeFakeRuntimeSource(t *testing.T, fakeModuleRoot string) string {
 	return rootDir
 }
 
-func writeFakeQwenModule(t *testing.T) string {
+func writeFakeQwenModule(t *testing.T, alignmentShape string) string {
 	t.Helper()
 
 	rootDir := t.TempDir()
@@ -209,7 +244,9 @@ func writeFakeQwenModule(t *testing.T) string {
 		t.Fatalf("create fake qwen module: %v", err)
 	}
 
-	fakeQwen := "class _Result:\n" +
+	fakeQwen := "import os\n" +
+		"\n" +
+		"class _Result:\n" +
 		"    def __init__(self, text, language='en'):\n" +
 		"        self.text = text\n" +
 		"        self.language = language\n" +
@@ -219,6 +256,10 @@ func writeFakeQwenModule(t *testing.T) string {
 		"        self.text = text\n" +
 		"        self.start_time = start_time\n" +
 		"        self.end_time = end_time\n" +
+		"\n" +
+		"class ForcedAlignResult:\n" +
+		"    def __init__(self, items):\n" +
+		"        self.items = items\n" +
 		"\n" +
 		"class Qwen3ASRModel:\n" +
 		"    def __init__(self, model_path, **kwargs):\n" +
@@ -249,6 +290,8 @@ func writeFakeQwenModule(t *testing.T) string {
 		"        for index, token in enumerate((text or '').split()):\n" +
 		"            start = index * 0.4\n" +
 		"            words.append(_Word(token, start, start + 0.24))\n" +
+		"        if os.environ.get(\"ASRSUBS_TEST_ALIGNMENT_SHAPE\") == \"forced_align_result\":\n" +
+		"            return [ForcedAlignResult(words)]\n" +
 		"        return [words]\n"
 	if err := os.WriteFile(filepath.Join(moduleDir, "__init__.py"), []byte(fakeQwen), 0o644); err != nil {
 		t.Fatalf("write fake qwen module: %v", err)
@@ -262,6 +305,10 @@ func writeFakeQwenModule(t *testing.T) string {
 		"        return False\n"
 	if err := os.WriteFile(filepath.Join(rootDir, "torch.py"), []byte(fakeTorch), 0o644); err != nil {
 		t.Fatalf("write fake torch module: %v", err)
+	}
+
+	if alignmentShape != "" {
+		t.Setenv("ASRSUBS_TEST_ALIGNMENT_SHAPE", alignmentShape)
 	}
 
 	return rootDir
