@@ -1,9 +1,11 @@
 package intake
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestValidateMediaFileRejectsUnsupportedType(t *testing.T) {
@@ -46,6 +48,36 @@ func TestValidateMediaFileReturnsMetadata(t *testing.T) {
 	}
 
 	if metadata.DurationLabel != "0:02" {
+		t.Fatalf("unexpected duration label: %s", metadata.DurationLabel)
+	}
+}
+
+func TestValidateMediaFileUsesDurationProberForNonWAV(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	path := filepath.Join(tempDir, "sample.mp4")
+	if err := os.WriteFile(path, []byte("not-a-real-mp4"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	service := NewService(WithDurationProber(func(_ context.Context, inputPath string) (time.Duration, error) {
+		if inputPath != path {
+			t.Fatalf("unexpected probe path: %s", inputPath)
+		}
+		return 125 * time.Second, nil
+	}))
+
+	metadata, err := service.ValidateMediaFile(path)
+	if err != nil {
+		t.Fatalf("validate media: %v", err)
+	}
+
+	if !metadata.HasKnownDuration {
+		t.Fatalf("expected duration to be available")
+	}
+
+	if metadata.DurationLabel != "2:05" {
 		t.Fatalf("unexpected duration label: %s", metadata.DurationLabel)
 	}
 }

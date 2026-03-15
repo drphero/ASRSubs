@@ -1,13 +1,18 @@
 package intake
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"time"
+
+	asrruntime "ASRSubs/internal/runtime"
 )
 
 type MediaMetadata struct {
@@ -21,7 +26,12 @@ type MediaMetadata struct {
 	HasKnownDuration bool    `json:"hasKnownDuration"`
 }
 
-type Service struct{}
+type DurationProber func(ctx context.Context, inputPath string) (time.Duration, error)
+type Option func(*Service)
+
+type Service struct {
+	probeDuration DurationProber
+}
 
 var supportedExtensions = map[string]struct{}{
 	".wav":  {},
@@ -39,8 +49,22 @@ var supportedExtensions = map[string]struct{}{
 	".webm": {},
 }
 
-func NewService() *Service {
-	return &Service{}
+func WithDurationProber(prober DurationProber) Option {
+	return func(service *Service) {
+		service.probeDuration = prober
+	}
+}
+
+func NewService(options ...Option) *Service {
+	service := &Service{
+		probeDuration: probeDurationWithFFprobe,
+	}
+
+	for _, option := range options {
+		option(service)
+	}
+
+	return service
 }
 
 func (s *Service) ValidateMediaFile(path string) (MediaMetadata, error) {
@@ -69,7 +93,7 @@ func (s *Service) ValidateMediaFile(path string) (MediaMetadata, error) {
 	}
 	defer file.Close()
 
-	duration, hasDuration := detectDuration(cleanedPath, file)
+	duration, hasDuration := detectDuration(cleanedPath, file, s.probeDuration)
 
 	metadata := MediaMetadata{
 		Path:             cleanedPath,
@@ -89,13 +113,22 @@ func (s *Service) ValidateMediaFile(path string) (MediaMetadata, error) {
 	return metadata, nil
 }
 
-func detectDuration(path string, file *os.File) (time.Duration, bool) {
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".wav":
-		return wavDuration(file)
-	default:
-		return 0, false
+func detectDuration(path string, file *os.File, probe DurationProber) (time.Duration, bool) {
+	if probe != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		duration, err := probe(ctx, path)
+		if err == nil && duration > 0 {
+			return duration, true
+		}
 	}
+
+	if strings.EqualFold(filepath.Ext(path), ".wav") {
+		return wavDuration(file)
+	}
+
+	return 0, false
 }
 
 func wavDuration(file *os.File) (time.Duration, bool) {
@@ -174,4 +207,69 @@ func formatDuration(duration time.Duration) string {
 	}
 
 	return fmt.Sprintf("%d:%02d", minutes, seconds)
+}
+
+func probeDurationWithFFprobe(ctx context.Context, inputPath string) (time.Duration, error) {
+	ffprobePath, err := resolveBinaryPath("ffprobe")
+	if err != nil {
+		return 0, err
+	}
+
+	cmd := exec.CommandContext(
+		ctx,
+		ffprobePath,
+		"-v",
+		"error",
+		"-show_entries",
+		"format=duration",
+		"-of",
+		"default=noprint_wrappers=1:nokey=1",
+		inputPath,
+	)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(strings.TrimSpace(string(output)) + "s")
+}
+
+func resolveBinaryPath(name string) (string, error) {
+	envKey := "ASRSUBS_FFMPEG_PATH"
+	if name == "ffprobe" {
+		envKey = "ASRSUBS_FFPROBE_PATH"
+	}
+
+	if candidate := strings.TrimSpace(os.Getenv(envKey)); candidate != "" {
+		if fileExists(candidate) {
+			return candidate, nil
+		}
+		return "", fmt.Errorf("%s is set but points to a missing file: %s", envKey, candidate)
+	}
+
+	bundledName := name
+	if goruntime.GOOS == "windows" {
+		bundledName += ".exe"
+	}
+
+	if bundled := asrruntime.ResolveBundledResourcePath("bin", bundledName); bundled != "" {
+		return bundled, nil
+	}
+
+	resolved, err := exec.LookPath(name)
+	if err == nil {
+		return resolved, nil
+	}
+
+	return "", fmt.Errorf(
+		"%s is unavailable: package it under bin/%s in the app resources or install it on PATH",
+		name,
+		bundledName,
+	)
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
