@@ -24,12 +24,8 @@ export function SelectedFileSummary({
       <div className="selected-file-intro">
         <div>
           <p className="section-label">Ready to run</p>
-          <h3>Local transcription is set up for this file.</h3>
+          <h3>Ready to transcribe this file.</h3>
         </div>
-        <p className="workspace-copy">
-          Run the local pipeline to generate a raw subtitle draft here in the workspace. This view keeps the
-          file facts, model state, diagnostics, and retry path in one place until the `.srt` draft is ready.
-        </p>
       </div>
       <div className="summary-grid">
         <div className="summary-stat">

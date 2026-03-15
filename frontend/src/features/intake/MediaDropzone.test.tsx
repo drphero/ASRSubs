@@ -13,7 +13,7 @@ describe("MediaDropzone", () => {
     );
 
     expect(screen.getByRole("button", { name: /browse media/i })).toBeInTheDocument();
-    expect(screen.getByText(/Selected model: Qwen3-ASR-0.6B/i)).toBeInTheDocument();
+    expect(screen.getByText(/Model: Qwen3-ASR-0.6B/i)).toBeInTheDocument();
   });
 
   it("shows the inline error state", () => {

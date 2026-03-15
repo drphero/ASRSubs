@@ -15,10 +15,6 @@ export function ProcessingView({ selectedModelStatus, snapshot }: ProcessingView
       <div className="processing-card">
         <p className="section-label">Local transcription</p>
         <h2>{snapshot.stage || "Preparing media"}</h2>
-        <p className="workspace-copy">
-          ASRSubs is running the selected file entirely on this machine. Only the current stage stays visible
-          until the run completes or returns you to the workspace.
-        </p>
         {partLabel ? <p className="inline-feedback">{partLabel}</p> : null}
         <div className="processing-meta-grid">
           <div className="processing-meta-card">

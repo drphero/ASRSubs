@@ -116,11 +116,6 @@ export function AppShell({
                   <section className="workspace-card workspace-success-card" aria-label="completed editing state">
                     <p className="section-label">Transcription complete</p>
                     <h2>Subtitle draft ready for final edits.</h2>
-                    <p className="workspace-copy">
-                      ASRSubs has moved from processing into edit mode without leaving the current shell. File identity,
-                      diagnostics access, and save actions stay visible while the raw subtitle text is ready at the top
-                      of the document.
-                    </p>
                   </section>
                 ) : null}
                 <WorkspaceHeader

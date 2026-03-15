@@ -56,11 +56,6 @@ export function SubtitleEditorCard({
         </div>
       </div>
 
-      <p className="workspace-copy editor-copy">
-        The raw subtitle file stays local in this workspace. The caret lands at the top so you can start correcting the
-        generated `.srt` immediately.
-      </p>
-
       <label className="field editor-field">
         <span>Editable SRT text</span>
         <textarea

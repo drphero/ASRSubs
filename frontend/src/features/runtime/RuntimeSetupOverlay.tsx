@@ -24,8 +24,8 @@ export function RuntimeSetupOverlay({
   const failed = readiness.state === "failed";
   const title = failed ? "Runtime setup needs attention." : "Prepare the local runtime before the first run.";
   const summary = failed
-    ? "ASRSubs could not finish the managed runtime setup. Retry it here or open Details for the backend diagnostic trail."
-    : "The packaged app carries its own Python worker and media tools, but ASRSubs still prepares them inside your local app data folder on first launch.";
+    ? "Runtime setup did not finish. Retry it here or inspect diagnostics."
+    : "ASRSubs needs to prepare its local runtime before the first transcription.";
   const actionLabel = busy ? "Preparing runtime..." : failed ? "Retry Runtime Setup" : "Prepare Runtime";
 
   return (
@@ -62,7 +62,7 @@ export function RuntimeSetupOverlay({
           <span className={`status-pill status-pill-${failed ? "failed" : "not_downloaded"}`}>
             {failed ? "Retry available" : "Confirmation required"}
           </span>
-          <p>{readiness.detail || "ASRSubs will keep the normal workspace available while setup runs."}</p>
+          <p>{readiness.detail || "The normal workspace stays available while setup runs."}</p>
         </div>
 
         <div className="runtime-overlay-actions">
@@ -75,14 +75,6 @@ export function RuntimeSetupOverlay({
           <button className="ghost-action" onClick={onClose} type="button">
             Not Now
           </button>
-        </div>
-
-        <div className="runtime-overlay-note">
-          <p className="section-label">What happens next</p>
-          <p className="workspace-copy">
-            Runtime setup only prepares the managed Python environment. Model downloads still stay in the normal
-            workspace and settings surfaces instead of switching you into a separate onboarding flow.
-          </p>
         </div>
       </section>
     </div>

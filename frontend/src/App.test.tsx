@@ -83,7 +83,7 @@ describe("App shell", () => {
 
     expect(screen.getByLabelText("landing view")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Browse Media" })).toBeInTheDocument();
-    expect(await screen.findByText(/Selected model: Qwen3-ASR-1.7B/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Model: Qwen3-ASR-1.7B/i)).toBeInTheDocument();
   });
 
   it("opens the settings drawer", async () => {
@@ -110,7 +110,7 @@ describe("App shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Browse Media" }));
 
     expect(await screen.findByLabelText("workspace view")).toBeInTheDocument();
-    expect(screen.getByText("Local transcription is set up for this file.")).toBeInTheDocument();
+    expect(screen.getByText("Ready to transcribe this file.")).toBeInTheDocument();
     expect(screen.getByText("1.2 KB")).toBeInTheDocument();
   });
 

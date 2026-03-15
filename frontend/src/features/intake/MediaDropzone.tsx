@@ -53,7 +53,7 @@ export function MediaDropzone({
             <button className="primary-action" onClick={onBrowse} type="button">
               Browse Media
             </button>
-            <span className="secondary-note">Selected model: {selectedModel}</span>
+            <span className="secondary-note">Model: {selectedModel}</span>
           </div>
           {error ? (
             <p className="inline-feedback inline-feedback-error" role="alert">

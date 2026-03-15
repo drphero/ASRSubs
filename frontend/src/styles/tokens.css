@@ -451,10 +451,6 @@ button {
   justify-items: end;
 }
 
-.editor-copy {
-  max-width: 760px;
-}
-
 .editor-field {
   gap: 12px;
 }
@@ -581,8 +577,7 @@ button {
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
 }
 
-.runtime-overlay-copy,
-.runtime-overlay-note {
+.runtime-overlay-copy {
   display: grid;
   gap: 8px;
 }
