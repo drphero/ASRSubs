@@ -3,10 +3,12 @@ package runtime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRuntimeBootstrapCreatesManagedRuntime(t *testing.T) {
@@ -72,6 +74,83 @@ func TestRuntimeBootstrapDoesNotFallbackToSystemPython(t *testing.T) {
 	}
 }
 
+func TestRuntimeBootstrapReportsTimeoutWithTrimmedPipOutput(t *testing.T) {
+	rootDir := t.TempDir()
+	requirementsPath := filepath.Join(rootDir, "requirements.txt")
+	if err := os.WriteFile(requirementsPath, []byte("qwen-asr==0.0.6\n"), 0o644); err != nil {
+		t.Fatalf("write requirements: %v", err)
+	}
+
+	service := NewServiceAtRoot(
+		filepath.Join(rootDir, "managed"),
+		WithManagedRuntimeSource(writeSleepingRuntimeSource(t)),
+		WithRequirementsPath(requirementsPath),
+		WithWorkerScriptPath(filepath.Join(rootDir, "worker.py")),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+
+	_, err := service.EnsureReady(ctx)
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+
+	message := err.Error()
+	if !strings.Contains(message, "exceeded the 30 minute setup window") {
+		t.Fatalf("expected timeout message, got %s", message)
+	}
+	if strings.Contains(message, "line-01") || strings.Contains(message, "line-24") {
+		t.Fatalf("expected timeout message to avoid raw pip transcript, got %s", message)
+	}
+}
+
+func TestRuntimeBootstrapReportsCancellationWithTrimmedPipOutput(t *testing.T) {
+	rootDir := t.TempDir()
+	requirementsPath := filepath.Join(rootDir, "requirements.txt")
+	if err := os.WriteFile(requirementsPath, []byte("qwen-asr==0.0.6\n"), 0o644); err != nil {
+		t.Fatalf("write requirements: %v", err)
+	}
+
+	service := NewServiceAtRoot(
+		filepath.Join(rootDir, "managed"),
+		WithManagedRuntimeSource(writeSleepingRuntimeSource(t)),
+		WithRequirementsPath(requirementsPath),
+		WithWorkerScriptPath(filepath.Join(rootDir, "worker.py")),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := service.EnsureReady(ctx)
+	if err == nil {
+		t.Fatal("expected cancellation error")
+	}
+
+	message := err.Error()
+	if !strings.Contains(message, "installation was canceled") {
+		t.Fatalf("expected cancellation message, got %s", message)
+	}
+	if strings.Contains(message, "line-01") || strings.Contains(message, "line-24") {
+		t.Fatalf("expected cancellation message to avoid raw pip transcript, got %s", message)
+	}
+}
+
+func TestSummarizeCommandOutputKeepsOnlyRecentLines(t *testing.T) {
+	var output strings.Builder
+	for index := 1; index <= 24; index++ {
+		output.WriteString(fmt.Sprintf("line-%02d\n", index))
+	}
+
+	summary := summarizeCommandOutput([]byte(output.String()))
+	if strings.Contains(summary, "line-01") {
+		t.Fatalf("expected oldest line to be trimmed, got %s", summary)
+	}
+	if !strings.Contains(summary, "line-13") || !strings.Contains(summary, "line-24") {
+		t.Fatalf("expected most recent lines to remain, got %s", summary)
+	}
+}
+
 func TestRuntimeStatusUsesBundledResourcesBeforeRepoPaths(t *testing.T) {
 	rootDir := t.TempDir()
 	resourceRoot := t.TempDir()
@@ -111,4 +190,36 @@ func TestRuntimeStatusUsesBundledResourcesBeforeRepoPaths(t *testing.T) {
 	if source != filepath.Join(runtimeRoot, "python") {
 		t.Fatalf("expected bundled runtime source, got %s", source)
 	}
+}
+
+func writeSleepingRuntimeSource(t *testing.T) string {
+	t.Helper()
+
+	rootDir := t.TempDir()
+	binDir := filepath.Join(rootDir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("create runtime bin dir: %v", err)
+	}
+
+	var pipLines strings.Builder
+	for index := 1; index <= 24; index++ {
+		pipLines.WriteString("echo line-")
+		pipLines.WriteString(fmt.Sprintf("%02d", index))
+		pipLines.WriteString(" 1>&2\n")
+	}
+
+	script := "#!/bin/sh\n" +
+		"if [ \"$1\" = \"-m\" ] && [ \"$2\" = \"pip\" ]; then\n" +
+		pipLines.String() +
+		"  sleep 5\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"exit 0\n"
+
+	pythonPath := filepath.Join(binDir, "python3")
+	if err := os.WriteFile(pythonPath, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake python: %v", err)
+	}
+
+	return rootDir
 }

@@ -8,6 +8,8 @@ import (
 	asrruntime "ASRSubs/internal/runtime"
 )
 
+const runtimePreparationTimeout = 30 * time.Minute
+
 type RuntimeReadiness struct {
 	State      string `json:"state"`
 	RootDir    string `json:"rootDir"`
@@ -17,13 +19,17 @@ type RuntimeReadiness struct {
 }
 
 func (a *App) EnsureRuntimeReady() (RuntimeReadiness, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), runtimePreparationTimeout)
+	defer cancel()
+
+	return a.ensureRuntimeReadyWithContext(ctx)
+}
+
+func (a *App) ensureRuntimeReadyWithContext(ctx context.Context) (RuntimeReadiness, error) {
 	service, err := a.requireRuntimeService()
 	if err != nil {
 		return RuntimeReadiness{}, err
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
 
 	status, err := service.EnsureReady(ctx)
 	if err != nil {

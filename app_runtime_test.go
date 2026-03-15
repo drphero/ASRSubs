@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	asrruntime "ASRSubs/internal/runtime"
 )
@@ -75,6 +78,43 @@ func TestGetRuntimeReadinessReportsMissingBeforePreparation(t *testing.T) {
 	}
 }
 
+func TestEnsureRuntimeReadyReportsConciseTimeoutFailure(t *testing.T) {
+	rootDir := t.TempDir()
+	requirementsPath := filepath.Join(rootDir, "requirements.txt")
+	if err := os.WriteFile(requirementsPath, []byte("qwen-asr==0.0.6\n"), 0o644); err != nil {
+		t.Fatalf("write requirements: %v", err)
+	}
+
+	app := &App{}
+	app.initDiagnostics()
+	app.runtime = asrruntime.NewServiceAtRoot(
+		filepath.Join(rootDir, "managed"),
+		asrruntime.WithManagedRuntimeSource(writeSlowManagedRuntimeSource(t)),
+		asrruntime.WithRequirementsPath(requirementsPath),
+		asrruntime.WithWorkerScriptPath(filepath.Join(rootDir, "worker.py")),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+
+	status, err := app.ensureRuntimeReadyWithContext(ctx)
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+
+	if status.State != "failed" {
+		t.Fatalf("expected failed state, got %s", status.State)
+	}
+	if !strings.Contains(status.Detail, "exceeded the 30 minute setup window") {
+		t.Fatalf("expected concise timeout detail, got %s", status.Detail)
+	}
+
+	snapshot := app.GetDiagnosticsSnapshot()
+	if len(snapshot.Entries) == 0 {
+		t.Fatal("expected diagnostics entry")
+	}
+}
+
 func writeFakeManagedRuntimeSource(t *testing.T) string {
 	t.Helper()
 
@@ -100,6 +140,31 @@ func writeFakeManagedRuntimeSource(t *testing.T) string {
 		"esac\n" +
 		"echo '{\"ok\":false,\"command\":\"unknown\",\"error\":\"Unsupported worker command.\"}'\n" +
 		"exit 1\n"
+
+	pythonPath := filepath.Join(binDir, "python3")
+	if err := os.WriteFile(pythonPath, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake python: %v", err)
+	}
+
+	return rootDir
+}
+
+func writeSlowManagedRuntimeSource(t *testing.T) string {
+	t.Helper()
+
+	rootDir := t.TempDir()
+	binDir := filepath.Join(rootDir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("create fake runtime dir: %v", err)
+	}
+
+	script := "#!/bin/sh\n" +
+		"if [ \"$1\" = \"-m\" ] && [ \"$2\" = \"pip\" ]; then\n" +
+		"  echo 'Downloading packages' 1>&2\n" +
+		"  sleep 5\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"exit 0\n"
 
 	pythonPath := filepath.Join(binDir, "python3")
 	if err := os.WriteFile(pythonPath, []byte(script), 0o755); err != nil {

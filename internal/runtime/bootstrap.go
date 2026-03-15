@@ -19,6 +19,8 @@ import (
 
 var ErrManagedRuntimeUnavailable = errors.New("managed Python runtime source is unavailable")
 
+const pipOutputTailLineCount = 12
+
 type Status struct {
 	State      string `json:"state"`
 	RootDir    string `json:"rootDir"`
@@ -232,7 +234,25 @@ func (s *Service) installRequirements(ctx context.Context) error {
 	cmd.Env = append(os.Environ(), "PYTHONUTF8=1")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		message := strings.TrimSpace(string(output))
+		outputTail := summarizeCommandOutput(output)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			if errors.Is(ctxErr, context.DeadlineExceeded) {
+				message := "managed runtime dependency installation exceeded the 30 minute setup window; check internet connectivity and retry"
+				if outputTail != "" {
+					message = fmt.Sprintf("%s\nRecent pip output:\n%s", message, outputTail)
+				}
+				return errors.New(message)
+			}
+			if errors.Is(ctxErr, context.Canceled) {
+				message := "managed runtime dependency installation was canceled"
+				if outputTail != "" {
+					message = fmt.Sprintf("%s\nRecent pip output:\n%s", message, outputTail)
+				}
+				return errors.New(message)
+			}
+		}
+
+		message := outputTail
 		if message == "" {
 			message = err.Error()
 		}
@@ -240,6 +260,24 @@ func (s *Service) installRequirements(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func summarizeCommandOutput(output []byte) string {
+	message := strings.TrimSpace(string(output))
+	if message == "" {
+		return ""
+	}
+
+	lines := strings.Split(message, "\n")
+	if len(lines) > pipOutputTailLineCount {
+		lines = lines[len(lines)-pipOutputTailLineCount:]
+	}
+
+	for index, line := range lines {
+		lines[index] = strings.TrimRight(line, "\r")
+	}
+
+	return strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
 func (s *Service) resolveManagedRuntimeSource() (string, error) {
