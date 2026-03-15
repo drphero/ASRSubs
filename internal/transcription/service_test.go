@@ -18,24 +18,37 @@ import (
 func TestTranscriptionRunsShortPipelineWithAlignmentAndSubtitles(t *testing.T) {
 	harness := newTestHarness(t, testServiceConfig{})
 	stages := []string{}
+	downloadTargets := []string{}
 
 	err := harness.service.Start(context.Background(), StartRequest{
 		MediaPath: filepath.Join(t.TempDir(), "clip.wav"),
 		ModelID:   "Qwen3-ASR-1.7B",
 	}, func(snapshot Snapshot) {
 		stages = append(stages, snapshot.Stage)
+		if snapshot.Stage == StageDownloading {
+			downloadTargets = append(downloadTargets, snapshot.DownloadTarget)
+		}
 	})
 	if err != nil {
 		t.Fatalf("start transcription: %v", err)
 	}
 
-	expected := []string{StagePreparingMedia, StageDownloading, StageTranscribing, StageAligning, StageBuildingSubtitles}
+	expected := []string{StagePreparingMedia, StageDownloading, StageDownloading, StageTranscribing, StageAligning, StageBuildingSubtitles}
 	if len(stages) != len(expected) {
 		t.Fatalf("unexpected stages: %v", stages)
 	}
 	for index, stage := range expected {
 		if stages[index] != stage {
 			t.Fatalf("expected stage %s at %d, got %s", stage, index, stages[index])
+		}
+	}
+	expectedTargets := []string{"Qwen3-ASR-1.7B", models.ForcedAlignerID}
+	if len(downloadTargets) != len(expectedTargets) {
+		t.Fatalf("unexpected download targets: %v", downloadTargets)
+	}
+	for index, target := range expectedTargets {
+		if downloadTargets[index] != target {
+			t.Fatalf("expected download target %s at %d, got %s", target, index, downloadTargets[index])
 		}
 	}
 
@@ -79,6 +92,37 @@ func TestTranscriptionDownloadsInternalAlignerBeforeAlignment(t *testing.T) {
 	snapshot := modelService.Snapshot()
 	if len(snapshot.Models) != 2 {
 		t.Fatalf("expected only selectable models in snapshot, got %d", len(snapshot.Models))
+	}
+}
+
+func TestTranscriptionShowsAlignerAsDownloadTargetWhenOnlyAlignerIsMissing(t *testing.T) {
+	rootDir := t.TempDir()
+	modelService := models.NewServiceAtRoot(rootDir, nil, models.WithDownloader(func(_ context.Context, model models.ModelDescriptor, destination string) error {
+		return os.WriteFile(filepath.Join(destination, "weights.bin"), []byte(model.ID), 0o644)
+	}))
+	waitForModelReady(t, modelService, "Qwen3-ASR-1.7B")
+
+	harness := newTestHarness(t, testServiceConfig{modelService: modelService})
+	downloadTargets := []string{}
+
+	err := harness.service.Start(context.Background(), StartRequest{
+		MediaPath: filepath.Join(t.TempDir(), "clip.wav"),
+		ModelID:   "Qwen3-ASR-1.7B",
+	}, func(snapshot Snapshot) {
+		if snapshot.Stage == StageDownloading {
+			downloadTargets = append(downloadTargets, snapshot.DownloadTarget)
+		}
+	})
+	if err != nil {
+		t.Fatalf("start transcription: %v", err)
+	}
+
+	expectedTargets := []string{models.ForcedAlignerID}
+	if len(downloadTargets) != len(expectedTargets) {
+		t.Fatalf("unexpected download targets: %v", downloadTargets)
+	}
+	if downloadTargets[0] != expectedTargets[0] {
+		t.Fatalf("expected aligner download target, got %s", downloadTargets[0])
 	}
 }
 
@@ -462,6 +506,32 @@ type workerTracker struct {
 	calls               map[string]int
 	failAlignOnce       bool
 	failChunkAlignments map[int]int
+}
+
+func waitForModelReady(t *testing.T, service *models.Service, modelID string) {
+	t.Helper()
+
+	if _, err := service.StartDownload(modelID); err != nil {
+		t.Fatalf("start model download: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		status, err := service.GetModelState(modelID)
+		if err != nil {
+			t.Fatalf("get model state: %v", err)
+		}
+		if status.State == models.StateReady {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	status, err := service.GetModelState(modelID)
+	if err != nil {
+		t.Fatalf("get model state: %v", err)
+	}
+	t.Fatalf("timed out waiting for %s to become ready, got %s", modelID, status.State)
 }
 
 func (w *workerTracker) run(_ context.Context, request asrruntime.WorkerRequest) (asrruntime.WorkerResponse, error) {

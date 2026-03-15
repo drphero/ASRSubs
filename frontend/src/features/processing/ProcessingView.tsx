@@ -8,6 +8,8 @@ type ProcessingViewProps = {
 export function ProcessingView({ selectedModelStatus, snapshot }: ProcessingViewProps) {
   const partLabel =
     snapshot.partCount > 1 && snapshot.partIndex > 0 ? `Part ${snapshot.partIndex} of ${snapshot.partCount}` : null;
+  const downloadLabel =
+    snapshot.stage === "Downloading model" && snapshot.downloadTargetName ? snapshot.downloadTargetName : null;
 
   return (
     <section className="processing-view" aria-label="processing view">
@@ -16,6 +18,7 @@ export function ProcessingView({ selectedModelStatus, snapshot }: ProcessingView
         <p className="section-label">Local transcription</p>
         <h2>{snapshot.stage || "Preparing media"}</h2>
         {partLabel ? <p className="inline-feedback">{partLabel}</p> : null}
+        {downloadLabel ? <p className="inline-feedback">{downloadLabel}</p> : null}
         <div className="processing-meta-grid">
           <div className="processing-meta-card">
             <span>Current file</span>

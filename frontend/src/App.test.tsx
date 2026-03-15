@@ -199,4 +199,60 @@ describe("App shell", () => {
     expect(textarea).toHaveValue("edited subtitle text");
     expect(backend.getSubtitleDraft).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps the newer download-stage event when startTranscription resolves with a stale preparing snapshot", async () => {
+    let resolveStart: ((value: backend.TranscriptionSnapshot) => void) | null = null;
+    const startPromise = new Promise<backend.TranscriptionSnapshot>((resolve) => {
+      resolveStart = resolve;
+    });
+    vi.mocked(backend.startTranscription).mockReturnValueOnce(startPromise);
+    vi.mocked(backend.selectMediaFile).mockResolvedValueOnce({
+      directory: "/tmp",
+      durationLabel: "0:12",
+      durationSeconds: 12,
+      extension: ".wav",
+      hasKnownDuration: true,
+      name: "clip.wav",
+      path: "/tmp/clip.wav",
+      sizeBytes: 1200,
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse Media" }));
+    expect(await screen.findByLabelText("workspace view")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start Transcription" }));
+
+    await act(async () => {
+      emitRuntimeEvent("transcription:state", {
+        active: true,
+        canRetry: false,
+        downloadTargetName: "Qwen3-ForcedAligner-0.6B",
+        failedStage: "",
+        failureSummary: "",
+        fileName: "clip.wav",
+        filePath: "/tmp/clip.wav",
+        modelID: "Qwen3-ASR-1.7B",
+        partCount: 0,
+        partIndex: 0,
+        stage: "Downloading model",
+      });
+    });
+
+    await act(async () => {
+      resolveStart?.({
+        ...backend.defaultTranscriptionSnapshot,
+        active: true,
+        fileName: "clip.wav",
+        filePath: "/tmp/clip.wav",
+        modelID: "Qwen3-ASR-1.7B",
+        stage: "Preparing media",
+      });
+      await startPromise;
+    });
+
+    expect(await screen.findByLabelText("processing view")).toBeInTheDocument();
+    expect(screen.getByText("Downloading model")).toBeInTheDocument();
+    expect(screen.getByText("Qwen3-ForcedAligner-0.6B")).toBeInTheDocument();
+  });
 });

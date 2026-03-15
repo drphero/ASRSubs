@@ -159,7 +159,7 @@ export function useTranscriptionSession({ selectedFile, selectedModel }: UseTran
         mediaPath: selectedFile.path,
         modelID: selectedModel,
       });
-      setSnapshot(next);
+      setSnapshot((current) => (current.active ? current : next));
       setEditor(emptyEditorState);
       setError(null);
       return true;
@@ -172,7 +172,7 @@ export function useTranscriptionSession({ selectedFile, selectedModel }: UseTran
   async function retry() {
     try {
       const next = await retryTranscription();
-      setSnapshot(next);
+      setSnapshot((current) => (current.active ? current : next));
       setError(null);
       return true;
     } catch (caught) {

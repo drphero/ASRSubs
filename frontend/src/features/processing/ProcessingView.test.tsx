@@ -43,4 +43,23 @@ describe("ProcessingView", () => {
 
     expect(screen.getByText("Part 2 of 4")).toBeInTheDocument();
   });
+
+  it("shows the active download target while downloading a model", () => {
+    render(
+      <ProcessingView
+        selectedModelStatus={defaultModelSnapshot.models[0]}
+        snapshot={{
+          ...defaultTranscriptionSnapshot,
+          active: true,
+          downloadTargetName: "Qwen3-ForcedAligner-0.6B",
+          fileName: "feature.wav",
+          filePath: "/tmp/feature.wav",
+          modelID: "Qwen3-ASR-1.7B",
+          stage: "Downloading model",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Qwen3-ForcedAligner-0.6B")).toBeInTheDocument();
+  });
 });

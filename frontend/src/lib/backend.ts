@@ -125,6 +125,7 @@ export interface TranscriptionSnapshot {
   active: boolean;
   canRetry: boolean;
   stage: TranscriptionStage;
+  downloadTargetName?: string;
   failedStage: TranscriptionStage;
   partIndex: number;
   partCount: number;
@@ -237,6 +238,7 @@ export const defaultTranscriptionSnapshot: TranscriptionSnapshot = {
   active: false,
   canRetry: false,
   stage: "",
+  downloadTargetName: "",
   failedStage: "",
   partIndex: 0,
   partCount: 0,

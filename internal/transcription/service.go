@@ -48,6 +48,7 @@ type Snapshot struct {
 	Active         bool   `json:"active"`
 	CanRetry       bool   `json:"canRetry"`
 	Stage          string `json:"stage"`
+	DownloadTarget string `json:"downloadTargetName"`
 	FailedStage    string `json:"failedStage"`
 	PartIndex      int    `json:"partIndex"`
 	PartCount      int    `json:"partCount"`
@@ -248,10 +249,9 @@ func (s *Service) Start(ctx context.Context, request StartRequest, emit func(Sna
 		run.ChunkPlan = BuildChunkPlan(run.WorkDir, time.Duration(run.DurationMS)*time.Millisecond, request.Preferences)
 	}
 
-	modelStatus, alignerStatus, needsDownload, err := s.ensureModels(ctx, request.ModelID)
-	if needsDownload {
-		emit(stageSnapshot(base, StageDownloading, 0, len(run.ChunkPlan)))
-	}
+	modelStatus, alignerStatus, err := s.ensureModels(ctx, request.ModelID, func(target string) {
+		emit(downloadSnapshot(base, target, len(run.ChunkPlan)))
+	})
 	if err != nil {
 		return s.fail(run, StageDownloading, 0, len(run.ChunkPlan), "Model download failed.", err)
 	}
@@ -292,28 +292,33 @@ func (s *Service) prepareRun(request StartRequest) (*runState, error) {
 	return run, nil
 }
 
-func (s *Service) ensureModels(ctx context.Context, modelID string) (models.ModelStatus, models.ModelStatus, bool, error) {
+func (s *Service) ensureModels(ctx context.Context, modelID string, emitDownload func(target string)) (models.ModelStatus, models.ModelStatus, error) {
 	modelStatus, err := s.models.GetModelState(modelID)
 	if err != nil {
-		return models.ModelStatus{}, models.ModelStatus{}, false, err
+		return models.ModelStatus{}, models.ModelStatus{}, err
 	}
 	alignerStatus, err := s.models.GetModelState(models.ForcedAlignerID)
 	if err != nil {
-		return models.ModelStatus{}, models.ModelStatus{}, false, err
+		return models.ModelStatus{}, models.ModelStatus{}, err
 	}
 
-	needsDownload := modelStatus.State != models.StateReady || alignerStatus.State != models.StateReady
-
-	modelStatus, err = s.models.EnsureReady(ctx, modelID)
-	if err != nil {
-		return models.ModelStatus{}, models.ModelStatus{}, needsDownload, err
-	}
-	alignerStatus, err = s.models.EnsureReady(ctx, models.ForcedAlignerID)
-	if err != nil {
-		return models.ModelStatus{}, models.ModelStatus{}, needsDownload, err
+	if modelStatus.State != models.StateReady {
+		emitDownload(modelStatus.Name)
+		modelStatus, err = s.models.EnsureReady(ctx, modelID)
+		if err != nil {
+			return models.ModelStatus{}, models.ModelStatus{}, err
+		}
 	}
 
-	return modelStatus, alignerStatus, needsDownload, nil
+	if alignerStatus.State != models.StateReady {
+		emitDownload(alignerStatus.Name)
+		alignerStatus, err = s.models.EnsureReady(ctx, models.ForcedAlignerID)
+		if err != nil {
+			return models.ModelStatus{}, models.ModelStatus{}, err
+		}
+	}
+
+	return modelStatus, alignerStatus, nil
 }
 
 func (s *Service) executeShortRun(
@@ -553,8 +558,15 @@ func (s *Service) alignAudio(
 
 func stageSnapshot(base Snapshot, stage string, partIndex int, partCount int) Snapshot {
 	base.Stage = stage
+	base.DownloadTarget = ""
 	base.PartIndex = partIndex
 	base.PartCount = partCount
+	return base
+}
+
+func downloadSnapshot(base Snapshot, target string, partCount int) Snapshot {
+	base = stageSnapshot(base, StageDownloading, 0, partCount)
+	base.DownloadTarget = target
 	return base
 }
 
