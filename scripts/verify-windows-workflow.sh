@@ -87,7 +87,6 @@ readme_checks=(
   "./scripts/build-macos-package.sh"
   "ASRSubs-<version>-windows-amd64-portable.zip"
   "ASRSubs-<version>-windows-amd64-installer.exe"
-  "wails.json"
   "Gatekeeper"
   "SmartScreen"
 )
